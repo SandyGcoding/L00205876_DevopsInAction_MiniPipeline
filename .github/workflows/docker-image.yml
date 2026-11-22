@@ -22,4 +22,4 @@ jobs:
     - name: Build Maven JAR
       run: mvn -B -f Build_using_Maven/butters-veg/pom.xml clean package
     - name: Build the Docker image
-      run: docker build -f docker/DockerFile -t butters-veg:$(date +%s) Build_using_Maven/butters-veg
+      run: docker build -f Docker/DockerFile -t butters-veg:$(date +%s) Build_using_Maven/butters-veg
