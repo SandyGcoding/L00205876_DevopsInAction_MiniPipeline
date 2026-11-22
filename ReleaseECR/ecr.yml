@@ -1,0 +1,16 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ECR repository for Butters Veg
+
+Resources:
+  ButtersVegRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: butters-veg
+      ImageTagMutability: MUTABLE
+      EncryptionConfiguration:
+        EncryptionType: AES256
+
+Outputs:
+  RepositoryURI:
+    Description: Docker image repository address
+    Value: !GetAtt ButtersVegRepository.RepositoryUri
