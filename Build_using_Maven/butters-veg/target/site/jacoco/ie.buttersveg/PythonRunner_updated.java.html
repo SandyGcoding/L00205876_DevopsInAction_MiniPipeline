@@ -83,65 +83,65 @@ public final class PythonRunner_updated {
 <span class="nc" id="L83">    }</span>
 
     private static void respond(HttpExchange exchange) throws IOException {
-<span class="nc" id="L86">        try (exchange) {</span>
-<span class="nc" id="L87">            String method = exchange.getRequestMethod();</span>
-<span class="nc" id="L88">            String path = exchange.getRequestURI().getPath();</span>
+<span class="fc" id="L86">        try (exchange) {</span>
+<span class="fc" id="L87">            String method = exchange.getRequestMethod();</span>
+<span class="fc" id="L88">            String path = exchange.getRequestURI().getPath();</span>
             int status;
             String body;
             String contentType;
 
-<span class="nc bnc" id="L93" title="All 4 branches missed.">            if (!&quot;GET&quot;.equals(method) &amp;&amp; !&quot;HEAD&quot;.equals(method)) {</span>
-<span class="nc" id="L94">                status = 405;</span>
-<span class="nc" id="L95">                body = &quot;Method not allowed\n&quot;;</span>
-<span class="nc" id="L96">                contentType = &quot;text/plain; charset=utf-8&quot;;</span>
-<span class="nc" id="L97">                exchange.getResponseHeaders().set(&quot;Allow&quot;, &quot;GET, HEAD&quot;);</span>
-<span class="nc bnc" id="L98" title="All 2 branches missed.">            } else if (&quot;/&quot;.equals(path)) {</span>
-<span class="nc" id="L99">                status = 200;</span>
-<span class="nc" id="L100">                body = PAGE;</span>
-<span class="nc" id="L101">                contentType = &quot;text/html; charset=utf-8&quot;;</span>
-<span class="nc bnc" id="L102" title="All 2 branches missed.">            } else if (&quot;/health&quot;.equals(path)) {</span>
-<span class="nc" id="L103">                status = 200;</span>
-<span class="nc" id="L104">                body = &quot;OK\n&quot;;</span>
-<span class="nc" id="L105">                contentType = &quot;text/plain; charset=utf-8&quot;;</span>
+<span class="fc bfc" id="L93" title="All 4 branches covered.">            if (!&quot;GET&quot;.equals(method) &amp;&amp; !&quot;HEAD&quot;.equals(method)) {</span>
+<span class="fc" id="L94">                status = 405;</span>
+<span class="fc" id="L95">                body = &quot;Method not allowed\n&quot;;</span>
+<span class="fc" id="L96">                contentType = &quot;text/plain; charset=utf-8&quot;;</span>
+<span class="fc" id="L97">                exchange.getResponseHeaders().set(&quot;Allow&quot;, &quot;GET, HEAD&quot;);</span>
+<span class="fc bfc" id="L98" title="All 2 branches covered.">            } else if (&quot;/&quot;.equals(path)) {</span>
+<span class="fc" id="L99">                status = 200;</span>
+<span class="fc" id="L100">                body = PAGE;</span>
+<span class="fc" id="L101">                contentType = &quot;text/html; charset=utf-8&quot;;</span>
+<span class="fc bfc" id="L102" title="All 2 branches covered.">            } else if (&quot;/health&quot;.equals(path)) {</span>
+<span class="fc" id="L103">                status = 200;</span>
+<span class="fc" id="L104">                body = &quot;OK\n&quot;;</span>
+<span class="fc" id="L105">                contentType = &quot;text/plain; charset=utf-8&quot;;</span>
             } else {
-<span class="nc" id="L107">                status = 404;</span>
-<span class="nc" id="L108">                body = &quot;Not found\n&quot;;</span>
-<span class="nc" id="L109">                contentType = &quot;text/plain; charset=utf-8&quot;;</span>
+<span class="fc" id="L107">                status = 404;</span>
+<span class="fc" id="L108">                body = &quot;Not found\n&quot;;</span>
+<span class="fc" id="L109">                contentType = &quot;text/plain; charset=utf-8&quot;;</span>
             }
 
-<span class="nc" id="L112">            exchange.getResponseHeaders().set(&quot;Content-Type&quot;, contentType);</span>
-<span class="nc" id="L113">            exchange.getResponseHeaders().set(&quot;X-Content-Type-Options&quot;, &quot;nosniff&quot;);</span>
-<span class="nc" id="L114">            exchange.getResponseHeaders().set(&quot;Cache-Control&quot;, &quot;no-store&quot;);</span>
-<span class="nc" id="L115">            byte[] output = body.getBytes(StandardCharsets.UTF_8);</span>
-<span class="nc bnc" id="L116" title="All 2 branches missed.">            if (&quot;HEAD&quot;.equals(method)) {</span>
-<span class="nc" id="L117">                exchange.sendResponseHeaders(status, -1);</span>
+<span class="fc" id="L112">            exchange.getResponseHeaders().set(&quot;Content-Type&quot;, contentType);</span>
+<span class="fc" id="L113">            exchange.getResponseHeaders().set(&quot;X-Content-Type-Options&quot;, &quot;nosniff&quot;);</span>
+<span class="fc" id="L114">            exchange.getResponseHeaders().set(&quot;Cache-Control&quot;, &quot;no-store&quot;);</span>
+<span class="fc" id="L115">            byte[] output = body.getBytes(StandardCharsets.UTF_8);</span>
+<span class="fc bfc" id="L116" title="All 2 branches covered.">            if (&quot;HEAD&quot;.equals(method)) {</span>
+<span class="fc" id="L117">                exchange.sendResponseHeaders(status, -1);</span>
             } else {
-<span class="nc" id="L119">                exchange.sendResponseHeaders(status, output.length);</span>
-<span class="nc" id="L120">                try (OutputStream stream = exchange.getResponseBody()) {</span>
-<span class="nc" id="L121">                    stream.write(output);</span>
+<span class="fc" id="L119">                exchange.sendResponseHeaders(status, output.length);</span>
+<span class="fc" id="L120">                try (OutputStream stream = exchange.getResponseBody()) {</span>
+<span class="fc" id="L121">                    stream.write(output);</span>
                 }
             }
-<span class="nc" id="L124">            System.out.printf(&quot;HTTP %s %s -&gt; %d%n&quot;, method, path, status);</span>
+<span class="fc" id="L124">            System.out.printf(&quot;HTTP %s %s -&gt; %d%n&quot;, method, path, status);</span>
         }
-<span class="nc" id="L126">    }</span>
+<span class="fc" id="L126">    }</span>
 
     // Original Python launcher preserved for the manually tested stock program.
     private static void runPython(String[] args) throws IOException, InterruptedException {
-<span class="nc bnc" id="L130" title="All 2 branches missed.">        if (args.length &gt; 1) {</span>
+<span class="pc bpc" id="L130" title="1 of 2 branches missed.">        if (args.length &gt; 1) {</span>
 <span class="nc" id="L131">            System.err.println(&quot;Usage: java -cp app.jar ie.buttersveg.PythonRunner_updated --cli [path-to-workbook]&quot;);</span>
 <span class="nc" id="L132">            System.exit(2);</span>
 <span class="nc" id="L133">            return;</span>
         }
 
-<span class="nc bnc" id="L136" title="All 2 branches missed.">        Path workbook = Path.of(args.length == 0 ? &quot;Veg.xlsx&quot; : args[0])</span>
-<span class="nc" id="L137">                .toAbsolutePath().normalize();</span>
-<span class="nc bnc" id="L138" title="All 4 branches missed.">        if (args.length == 0 &amp;&amp; Files.notExists(workbook)) {</span>
+<span class="pc bpc" id="L136" title="1 of 2 branches missed.">        Path workbook = Path.of(args.length == 0 ? &quot;Veg.xlsx&quot; : args[0])</span>
+<span class="fc" id="L137">                .toAbsolutePath().normalize();</span>
+<span class="pc bpc" id="L138" title="3 of 4 branches missed.">        if (args.length == 0 &amp;&amp; Files.notExists(workbook)) {</span>
 <span class="nc" id="L139">            try (InputStream starter = openResource(&quot;/Veg.xlsx&quot;)) {</span>
 <span class="nc" id="L140">                Files.copy(starter, workbook);</span>
             }
         }
-<span class="nc bnc" id="L143" title="All 2 branches missed.">        if (!Files.isRegularFile(workbook)) {</span>
-<span class="nc" id="L144">            throw new FileNotFoundException(&quot;Excel workbook not found: &quot; + workbook);</span>
+<span class="pc bpc" id="L143" title="1 of 2 branches missed.">        if (!Files.isRegularFile(workbook)) {</span>
+<span class="fc" id="L144">            throw new FileNotFoundException(&quot;Excel workbook not found: &quot; + workbook);</span>
         }
 
 <span class="nc" id="L147">        String python = System.getenv(&quot;VEG_PYTHON&quot;);</span>

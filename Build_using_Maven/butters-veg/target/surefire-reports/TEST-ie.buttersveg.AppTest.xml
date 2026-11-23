@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="ie.buttersveg.AppTest" time="0.268" tests="1" errors="0" skipped="0" failures="0" flakes="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="ie.buttersveg.AppTest" time="1.674" tests="8" errors="0" skipped="0" failures="0" flakes="0">
   <properties>
     <property name="java.specification.version" value="27"/>
     <property name="sun.cpu.isalist" value="amd64"/>
@@ -14,7 +14,7 @@
     <property name="sun.java.launcher" value="SUN_STANDARD"/>
     <property name="user.country" value="IE"/>
     <property name="sun.boot.library.path" value="C:\Program Files\Java\jdk-27\bin"/>
-    <property name="sun.java.command" value="C:\Users\dgmag\AppData\Local\Temp\surefire3954518656358386608\surefirebooter-20261123203539770_3.jar C:\Users\dgmag\AppData\Local\Temp\surefire3954518656358386608 2026-11-23T20-35-39_503-jvmRun1 surefire-20261123203539770_1tmp surefire_0-20261123203539770_2tmp"/>
+    <property name="sun.java.command" value="C:\Users\dgmag\AppData\Local\Temp\surefire8074247540907725713\surefirebooter-20261123204619595_3.jar C:\Users\dgmag\AppData\Local\Temp\surefire8074247540907725713 2026-11-23T20-46-19_213-jvmRun1 surefire-20261123204619595_1tmp surefire_0-20261123204619595_2tmp"/>
     <property name="jdk.debug" value="release"/>
     <property name="surefire.test.class.path" value="G:\My Drive\ATU Donegal\DevOps Software Engineering\Continous Assessment\L00205876_DevopsInAction_MiniPipeline\Build_using_Maven\butters-veg\target\test-classes;G:\My Drive\ATU Donegal\DevOps Software Engineering\Continous Assessment\L00205876_DevopsInAction_MiniPipeline\Build_using_Maven\butters-veg\target\classes;C:\Users\dgmag\.m2\repository\org\junit\jupiter\junit-jupiter\5.11.0\junit-jupiter-5.11.0.jar;C:\Users\dgmag\.m2\repository\org\junit\jupiter\junit-jupiter-api\5.11.0\junit-jupiter-api-5.11.0.jar;C:\Users\dgmag\.m2\repository\org\opentest4j\opentest4j\1.3.0\opentest4j-1.3.0.jar;C:\Users\dgmag\.m2\repository\org\junit\platform\junit-platform-commons\1.11.0\junit-platform-commons-1.11.0.jar;C:\Users\dgmag\.m2\repository\org\apiguardian\apiguardian-api\1.1.2\apiguardian-api-1.1.2.jar;C:\Users\dgmag\.m2\repository\org\junit\jupiter\junit-jupiter-params\5.11.0\junit-jupiter-params-5.11.0.jar;C:\Users\dgmag\.m2\repository\org\junit\jupiter\junit-jupiter-engine\5.11.0\junit-jupiter-engine-5.11.0.jar;C:\Users\dgmag\.m2\repository\org\junit\platform\junit-platform-engine\1.11.0\junit-platform-engine-1.11.0.jar"/>
     <property name="sun.cpu.endian" value="little"/>
@@ -29,7 +29,7 @@
     <property name="line.separator" value="&#10;"/>
     <property name="java.vm.specification.vendor" value="Oracle Corporation"/>
     <property name="java.specification.name" value="Java Platform API Specification"/>
-    <property name="surefire.real.class.path" value="C:\Users\dgmag\AppData\Local\Temp\surefire3954518656358386608\surefirebooter-20261123203539770_3.jar"/>
+    <property name="surefire.real.class.path" value="C:\Users\dgmag\AppData\Local\Temp\surefire8074247540907725713\surefirebooter-20261123204619595_3.jar"/>
     <property name="user.script" value=""/>
     <property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers"/>
     <property name="java.runtime.version" value="27+35-2325"/>
@@ -58,5 +58,32 @@
     <property name="sun.io.unicode.encoding" value="UnicodeLittle"/>
     <property name="java.class.version" value="71.0"/>
   </properties>
-  <testcase name="appResourcesAreAvailable" classname="ie.buttersveg.AppTest" time="0.146"/>
+  <testcase name="responsesIncludeContentTypeProtection" classname="ie.buttersveg.AppTest" time="0.538">
+    <system-out><![CDATA[HTTP GET / -> 200
+]]></system-out>
+  </testcase>
+  <testcase name="unknownPageReturns404" classname="ie.buttersveg.AppTest" time="0.013">
+    <system-out><![CDATA[HTTP GET ]]></system-out>
+  </testcase>
+  <testcase name="homePageReturnsHtml" classname="ie.buttersveg.AppTest" time="0.014">
+    <system-out><![CDATA[/missing -> 404
+HTTP GET / -> 200
+]]></system-out>
+  </testcase>
+  <testcase name="healthEndpointReturnsOk" classname="ie.buttersveg.AppTest" time="0.012">
+    <system-out><![CDATA[HTTP GET ]]></system-out>
+  </testcase>
+  <testcase name="headRequestHasNoResponseBody" classname="ie.buttersveg.AppTest" time="0.018">
+    <system-out><![CDATA[/health -> 200
+HTTP HEAD / -> ]]></system-out>
+  </testcase>
+  <testcase name="postRequestReturns405" classname="ie.buttersveg.AppTest" time="0.016">
+    <system-out><![CDATA[200
+HTTP POST /]]></system-out>
+  </testcase>
+  <testcase name="missingWorkbookIsRejectedBeforePythonIsStarted" classname="ie.buttersveg.AppTest" time="0.023">
+    <system-out><![CDATA[ -> 405
+]]></system-out>
+  </testcase>
+  <testcase name="appResourcesAreAvailable" classname="ie.buttersveg.AppTest" time="0.017"/>
 </testsuite>
