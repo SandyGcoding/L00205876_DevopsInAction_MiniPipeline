@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PythonRunner_updated.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">butters-veg</a> &gt; <a href="index.source.html" class="el_package">ie.buttersveg</a> &gt; <span class="el_source">PythonRunner_updated.java</span></div><h1>PythonRunner_updated.java</h1><pre class="source lang-java linenums">package ie.buttersveg;
+
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
+
+/**
+ * Butters Veg application entry point.
+ *
+ * Docker runs this class with no arguments, which starts a minimal HTTP server
+ * suitable for an EC2 container deployment. The original Python stock program
+ * remains available with --cli (or with the original workbook-path argument).
+ * The HTTP page intentionally does NOT claim to provide online ordering.
+ */
+public final class PythonRunner_updated {
+
+    private static final String PAGE = &quot;&quot;&quot;
+            &lt;!doctype html&gt;
+            &lt;html lang=&quot;en&quot;&gt;
+            &lt;head&gt;
+              &lt;meta charset=&quot;utf-8&quot;&gt;
+              &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+              &lt;title&gt;Butters Veg&lt;/title&gt;
+              &lt;style&gt;
+                body { font: 1.1rem/1.6 system-ui, sans-serif; background: #f6f5ef;
+                       color: #253a2b; margin: 0; }
+                main { max-width: 42rem; margin: 4rem auto; padding: 0 1.5rem; }
+                h1 { font-size: 2.5rem; line-height: 1.2; }
+                .note { padding: 1rem; background: #e3efe1; border-radius: .5rem; }
+              &lt;/style&gt;
+            &lt;/head&gt;
+            &lt;body&gt;
+              &lt;main&gt;
+                &lt;h1&gt;Butters Veg&lt;/h1&gt;
+                &lt;p&gt;Connecting local vegetable growers and buyers.&lt;/p&gt;
+                &lt;p class=&quot;note&quot;&gt;The Java application is running on the deployment server.&lt;/p&gt;
+                &lt;p&gt;This is a CI/CD pipeline demonstration, not an online ordering service.&lt;/p&gt;
+              &lt;/main&gt;
+            &lt;/body&gt;
+            &lt;/html&gt;
+            &quot;&quot;&quot;;
+
+    private PythonRunner_updated() {
+        // Utility entry-point class.
+    }
+
+    public static void main(String[] args) throws IOException, InterruptedException {
+<span class="nc bnc" id="L57" title="All 2 branches missed.">        if (args.length == 0) {</span>
+<span class="nc" id="L58">            serveHttp(); // The unchanged Docker CMD invokes this mode.</span>
+<span class="nc" id="L59">            return;</span>
+        }
+
+<span class="nc bnc" id="L62" title="All 2 branches missed.">        if (&quot;--cli&quot;.equals(args[0])) {</span>
+<span class="nc" id="L63">            runPython(Arrays.copyOfRange(args, 1, args.length));</span>
+        } else {
+            // Preserve the original one-argument workbook invocation.
+<span class="nc" id="L66">            runPython(args);</span>
+        }
+<span class="nc" id="L68">    }</span>
+
+    private static void serveHttp() throws IOException {
+<span class="nc" id="L71">        String configuredPort = System.getenv(&quot;PORT&quot;);</span>
+<span class="nc bnc" id="L72" title="All 4 branches missed.">        int port = (configuredPort == null || configuredPort.isBlank())</span>
+<span class="nc" id="L73">                ? 8080 : Integer.parseInt(configuredPort);</span>
+<span class="nc bnc" id="L74" title="All 4 branches missed.">        if (port &lt; 1 || port &gt; 65535) {</span>
+<span class="nc" id="L75">            throw new IllegalArgumentException(&quot;PORT must be between 1 and 65535&quot;);</span>
+        }
+
+        // Bind to all interfaces so a Docker -p host:container mapping works.
+<span class="nc" id="L79">        HttpServer server = HttpServer.create(new InetSocketAddress(&quot;0.0.0.0&quot;, port), 0);</span>
+<span class="nc" id="L80">        server.createContext(&quot;/&quot;, PythonRunner_updated::respond);</span>
+<span class="nc" id="L81">        server.start();</span>
+<span class="nc" id="L82">        System.out.println(&quot;Butters Veg ready on 0.0.0.0:&quot; + port);</span>
+<span class="nc" id="L83">    }</span>
+
+    private static void respond(HttpExchange exchange) throws IOException {
+<span class="nc" id="L86">        try (exchange) {</span>
+<span class="nc" id="L87">            String method = exchange.getRequestMethod();</span>
+<span class="nc" id="L88">            String path = exchange.getRequestURI().getPath();</span>
+            int status;
+            String body;
+            String contentType;
+
+<span class="nc bnc" id="L93" title="All 4 branches missed.">            if (!&quot;GET&quot;.equals(method) &amp;&amp; !&quot;HEAD&quot;.equals(method)) {</span>
+<span class="nc" id="L94">                status = 405;</span>
+<span class="nc" id="L95">                body = &quot;Method not allowed\n&quot;;</span>
+<span class="nc" id="L96">                contentType = &quot;text/plain; charset=utf-8&quot;;</span>
+<span class="nc" id="L97">                exchange.getResponseHeaders().set(&quot;Allow&quot;, &quot;GET, HEAD&quot;);</span>
+<span class="nc bnc" id="L98" title="All 2 branches missed.">            } else if (&quot;/&quot;.equals(path)) {</span>
+<span class="nc" id="L99">                status = 200;</span>
+<span class="nc" id="L100">                body = PAGE;</span>
+<span class="nc" id="L101">                contentType = &quot;text/html; charset=utf-8&quot;;</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">            } else if (&quot;/health&quot;.equals(path)) {</span>
+<span class="nc" id="L103">                status = 200;</span>
+<span class="nc" id="L104">                body = &quot;OK\n&quot;;</span>
+<span class="nc" id="L105">                contentType = &quot;text/plain; charset=utf-8&quot;;</span>
+            } else {
+<span class="nc" id="L107">                status = 404;</span>
+<span class="nc" id="L108">                body = &quot;Not found\n&quot;;</span>
+<span class="nc" id="L109">                contentType = &quot;text/plain; charset=utf-8&quot;;</span>
+            }
+
+<span class="nc" id="L112">            exchange.getResponseHeaders().set(&quot;Content-Type&quot;, contentType);</span>
+<span class="nc" id="L113">            exchange.getResponseHeaders().set(&quot;X-Content-Type-Options&quot;, &quot;nosniff&quot;);</span>
+<span class="nc" id="L114">            exchange.getResponseHeaders().set(&quot;Cache-Control&quot;, &quot;no-store&quot;);</span>
+<span class="nc" id="L115">            byte[] output = body.getBytes(StandardCharsets.UTF_8);</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">            if (&quot;HEAD&quot;.equals(method)) {</span>
+<span class="nc" id="L117">                exchange.sendResponseHeaders(status, -1);</span>
+            } else {
+<span class="nc" id="L119">                exchange.sendResponseHeaders(status, output.length);</span>
+<span class="nc" id="L120">                try (OutputStream stream = exchange.getResponseBody()) {</span>
+<span class="nc" id="L121">                    stream.write(output);</span>
+                }
+            }
+<span class="nc" id="L124">            System.out.printf(&quot;HTTP %s %s -&gt; %d%n&quot;, method, path, status);</span>
+        }
+<span class="nc" id="L126">    }</span>
+
+    // Original Python launcher preserved for the manually tested stock program.
+    private static void runPython(String[] args) throws IOException, InterruptedException {
+<span class="nc bnc" id="L130" title="All 2 branches missed.">        if (args.length &gt; 1) {</span>
+<span class="nc" id="L131">            System.err.println(&quot;Usage: java -cp app.jar ie.buttersveg.PythonRunner_updated --cli [path-to-workbook]&quot;);</span>
+<span class="nc" id="L132">            System.exit(2);</span>
+<span class="nc" id="L133">            return;</span>
+        }
+
+<span class="nc bnc" id="L136" title="All 2 branches missed.">        Path workbook = Path.of(args.length == 0 ? &quot;Veg.xlsx&quot; : args[0])</span>
+<span class="nc" id="L137">                .toAbsolutePath().normalize();</span>
+<span class="nc bnc" id="L138" title="All 4 branches missed.">        if (args.length == 0 &amp;&amp; Files.notExists(workbook)) {</span>
+<span class="nc" id="L139">            try (InputStream starter = openResource(&quot;/Veg.xlsx&quot;)) {</span>
+<span class="nc" id="L140">                Files.copy(starter, workbook);</span>
+            }
+        }
+<span class="nc bnc" id="L143" title="All 2 branches missed.">        if (!Files.isRegularFile(workbook)) {</span>
+<span class="nc" id="L144">            throw new FileNotFoundException(&quot;Excel workbook not found: &quot; + workbook);</span>
+        }
+
+<span class="nc" id="L147">        String python = System.getenv(&quot;VEG_PYTHON&quot;);</span>
+<span class="nc bnc" id="L148" title="All 4 branches missed.">        if (python == null || python.isBlank()) {</span>
+<span class="nc bnc" id="L149" title="All 2 branches missed.">            python = System.getProperty(&quot;os.name&quot;).startsWith(&quot;Windows&quot;) ? &quot;py&quot; : &quot;python3&quot;;</span>
+        }
+
+<span class="nc" id="L152">        Path script = Files.createTempFile(&quot;veg-stock-&quot;, &quot;.py&quot;);</span>
+        int exitCode;
+        try {
+<span class="nc" id="L155">            try (InputStream source = openResource(&quot;/Test.py&quot;)) {</span>
+<span class="nc" id="L156">                Files.copy(source, script, StandardCopyOption.REPLACE_EXISTING);</span>
+            }
+<span class="nc" id="L158">            Process process = new ProcessBuilder(python, &quot;-u&quot;, script.toString(), workbook.toString())</span>
+<span class="nc" id="L159">                    .inheritIO()</span>
+<span class="nc" id="L160">                    .start();</span>
+            try {
+<span class="nc" id="L162">                exitCode = process.waitFor();</span>
+<span class="nc" id="L163">            } catch (InterruptedException interrupted) {</span>
+<span class="nc" id="L164">                process.destroyForcibly();</span>
+<span class="nc" id="L165">                throw interrupted;</span>
+<span class="nc" id="L166">            }</span>
+        } finally {
+<span class="nc" id="L168">            Files.deleteIfExists(script);</span>
+        }
+
+<span class="nc bnc" id="L171" title="All 2 branches missed.">        if (exitCode != 0) {</span>
+<span class="nc" id="L172">            System.exit(exitCode);</span>
+        }
+<span class="nc" id="L174">    }</span>
+
+    private static InputStream openResource(String name) throws FileNotFoundException {
+<span class="nc" id="L177">        InputStream resource = PythonRunner_updated.class.getResourceAsStream(name);</span>
+<span class="nc bnc" id="L178" title="All 2 branches missed.">        if (resource == null) {</span>
+<span class="nc" id="L179">            throw new FileNotFoundException(&quot;Packaged resource not found: &quot; + name);</span>
+        }
+<span class="nc" id="L181">        return resource;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>
