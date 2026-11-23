@@ -22,3 +22,14 @@ I now need to create a java app which I have not done before, before I can run t
 
 My overall goal is to deploy the code to website where users can buy and sell vegetables based on the quantity in stock.
 Prior to this I would have manually created everything in AWS, hoped it worked.
+
+Code - Build - Test - Release > Python, Java - Maven - JUnit, JaCoCo, SonarCube, Docker, AWS ECR
+Having worked through the individual steps I realised I could not deploy my original python script and excel to an ec2 instance with the Java application so I needed to go back and change my Java app.
+This was after I allowed my workflows to access the ECR using using AWS IAM and OIDC authentication.
+As I has missed my assignment deadline, I took a less panicked approach to testing and got JaCoCo and SonarCube working - although security and code coverage could be improved. I did demonstrate some small improvements in coverage
+
+The beauty of the pipeline is that it is easy to work back. I checked my docker file and double checked my AWS stacks did not reference the old java app.
+I could have not re-named the app but I think re-naming it was a good way showing dependencies.
+I also added a git ignore as I had not realised that every time I ran a Maven build locally, it updated the files in the target folder which are not needed for future builds.
+
+This experience demonstrated that successful individual pipeline stages do not necessarily guarantee that the overall application is ready for deployment. It also highlighted the value of version control, automated testing and repeatable builds when changes are required.
