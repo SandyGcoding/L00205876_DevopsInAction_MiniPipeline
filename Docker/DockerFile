@@ -2,11 +2,13 @@
 FROM eclipse-temurin:21-jre-jammy
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends python3 && \
+    apt-get install -y --no-install-recommends python3-openpyxl && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY target/butters-veg-1.jar app.jar
 
-CMD ["java", "-cp", "app.jar", "ie.buttersveg.PythonRunner"]
+EXPOSE 8080
+
+CMD ["java", "-cp", "app.jar", "ie.buttersveg.PythonRunner_updated"]
