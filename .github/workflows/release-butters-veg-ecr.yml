@@ -1,5 +1,4 @@
 name: Butters Veg ECR Release
-
 # Release only an image successfully published by the existing Docker workflow.
 on:
   workflow_run:
@@ -13,7 +12,6 @@ permissions:
 concurrency:
   group: butters-veg-ecr-release
   cancel-in-progress: false
-
 jobs:
   release:
     # Ignore failed Docker builds, pull requests, and non-main branches.
@@ -27,7 +25,6 @@ jobs:
       AWS_REGION: eu-north-1
       ECR_REPOSITORY: butters-veg
       IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
-
     steps:
       - name: Authenticate with AWS
         uses: aws-actions/configure-aws-credentials@v4
@@ -39,7 +36,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           # Docker Image CI publishes the image tagged with the full commit SHA.
           [[ "$IMAGE_TAG" =~ ^[0-9a-f]{40}$ ]] || {
             echo 'Invalid Git commit SHA.' >&2
@@ -47,7 +43,6 @@ jobs:
           }
 
           RELEASE_TAG="release-$IMAGE_TAG"
-
           # Confirm the image from the successful Docker workflow exists.
           SOURCE_DIGEST=$(aws ecr batch-get-image \
             --region "$AWS_REGION" \
@@ -55,12 +50,10 @@ jobs:
             --image-ids "imageTag=$IMAGE_TAG" \
             --query 'images[0].imageId.imageDigest' \
             --output text)
-
           if [[ -z "$SOURCE_DIGEST" || "$SOURCE_DIGEST" == 'None' ]]; then
             echo "Image $IMAGE_TAG was not found in ECR." >&2
             exit 1
           fi
-
           # Make reruns safe: do not overwrite an existing release tag.
           RELEASE_DIGEST=$(aws ecr batch-get-image \
             --region "$AWS_REGION" \
@@ -68,7 +61,6 @@ jobs:
             --image-ids "imageTag=$RELEASE_TAG" \
             --query 'images[0].imageId.imageDigest' \
             --output text)
-
           if [[ "$RELEASE_DIGEST" != 'None' && -n "$RELEASE_DIGEST" ]]; then
             if [[ "$RELEASE_DIGEST" != "$SOURCE_DIGEST" ]]; then
               echo 'Existing release tag points to a different image.' >&2
@@ -77,7 +69,6 @@ jobs:
             echo "Already released: $RELEASE_TAG"
             exit 0
           fi
-
           IMAGE_MANIFEST=$(aws ecr batch-get-image \
             --region "$AWS_REGION" \
             --repository-name "$ECR_REPOSITORY" \
@@ -89,11 +80,11 @@ jobs:
             echo 'Could not retrieve the Docker image manifest.' >&2
             exit 1
           }
-
           aws ecr put-image \
             --region "$AWS_REGION" \
             --repository-name "$ECR_REPOSITORY" \
             --image-tag "$RELEASE_TAG" \
+            --image-digest "$SOURCE_DIGEST" \
             --image-manifest "$IMAGE_MANIFEST" >/dev/null
 
           echo "Released image in ECR as $RELEASE_TAG"
