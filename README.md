@@ -33,3 +33,8 @@ I could have not re-named the app but I think re-naming it was a good way showin
 I also added a git ignore as I had not realised that every time I ran a Maven build locally, it updated the files in the target folder which are not needed for future builds.
 
 This experience demonstrated that successful individual pipeline stages do not necessarily guarantee that the overall application is ready for deployment. It also highlighted the value of version control, automated testing and repeatable builds when changes are required.
+
+I sucessfully deployed a Cloudformations stack using Infrasture as code and I demonstrated the instance stopped after 23:59.
+Unfortunately the Java is not displaying what I want,
+Then, possibly because it is late, my VS Code glitched and I messed up my branch commits with an onerous git ignore.
+I use my Google Drive for my college work and laptop is old but a Google tip suggested I pause syncing when using GitHub. I suspect there may be a clash between GitHub changes and Google Drive searcging for changes even when it is not syncing.
