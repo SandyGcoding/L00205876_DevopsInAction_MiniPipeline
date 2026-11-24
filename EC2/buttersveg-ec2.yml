@@ -1,0 +1,287 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Butters Veg demo deployment - VPC, restricted public EC2 instance, Docker
+  image from the existing butters-veg ECR repository, CloudWatch logs, and automatic nightly EC2 shutdown.
+  Deploy in eu-north-1 after the main branch has published the image.
+
+Parameters:
+  ImageTag:
+    Type: String
+    Description: Full 40-character Git commit SHA of an image already pushed to ECR by GitHub Actions.
+    AllowedPattern: '^[0-9a-f]{40}$'
+    ConstraintDescription: Enter the complete 40-character lowercase Git commit SHA used as the ECR image tag.
+
+  AllowedIpv4Cidr:
+    Type: String
+    Description: Your current public IPv4 address followed by /32 (for example 198.51.100.25/32). Never use 0.0.0.0/0 for this demo.
+    AllowedPattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}/32$'
+    ConstraintDescription: Enter one public IPv4 address with /32, such as 198.51.100.25/32.
+
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    AllowedValues:
+      - t3.micro
+      - t3.small
+    Description: EC2 instance type. Both options incur charges depending on account usage.
+
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+    Description: AWS-managed parameter for the current x86-64 Amazon Linux 2023 AMI.
+
+Resources:
+  AppVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.20.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-vpc'
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-igw'
+
+  GatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref AppVpc
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref AppVpc
+      CidrBlock: 10.20.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-public-subnet'
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref AppVpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-public-route-table'
+
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: GatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  AppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Only the specified IPv4 address can visit Butters Veg on TCP 8080; no SSH access.
+      VpcId: !Ref AppVpc
+      SecurityGroupIngress:
+        - Description: Butters Veg demo access from one public IP only
+          IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: !Ref AllowedIpv4Cidr
+      SecurityGroupEgress:
+        - Description: HTTP outbound for OS package repositories if required
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - Description: HTTPS outbound for ECR, SSM, CloudWatch and OS packages
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-web-sg'
+
+  AppLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/butters-veg/${AWS::StackName}'
+      RetentionInDays: 7
+
+  Ec2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: ButtersVegEcrPullAndApplicationLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AuthenticateToEcr
+                Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: '*'
+              - Sid: PullOnlyButtersVegImage
+                Effect: Allow
+                Action:
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchCheckLayerAvailability
+                Resource: !Sub 'arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/butters-veg'
+              - Sid: SendApplicationLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt AppLogGroup.Arn
+
+  Ec2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref Ec2Role
+
+  WebInstance:
+    Type: AWS::EC2::Instance
+    DependsOn:
+      - PublicDefaultRoute
+      - PublicSubnetAssociation
+      - AppLogGroup
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref Ec2InstanceProfile
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref AppSecurityGroup
+      MetadataOptions:
+        HttpEndpoint: enabled
+        HttpTokens: required
+        HttpPutResponseHopLimit: 1
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp3
+            VolumeSize: 12
+            Encrypted: true
+            DeleteOnTermination: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-web'
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -euo pipefail
+          exec > >(tee -a /var/log/buttersveg-bootstrap.log) 2>&1
+
+          echo 'Installing Docker and preparing Butters Veg...'
+          dnf install -y docker
+          systemctl enable --now docker
+
+          REGION='${AWS::Region}'
+          REGISTRY='${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}'
+          IMAGE="$REGISTRY/butters-veg:${ImageTag}"
+
+          # The EC2 instance profile supplies temporary AWS credentials; no secrets in this template.
+          aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$REGISTRY"
+          docker pull "$IMAGE"
+
+          docker run --detach \
+            --name butters-veg \
+            --restart unless-stopped \
+            --publish 8080:8080 \
+            --log-driver awslogs \
+            --log-opt awslogs-region="$REGION" \
+            --log-opt awslogs-group='${AppLogGroup}' \
+            --log-opt awslogs-stream='${AWS::StackName}-application' \
+            --env PORT=8080 \
+            "$IMAGE"
+
+          echo 'Waiting for the application health endpoint...'
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8080/health; then
+              echo 'Butters Veg health endpoint passed.'
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'ERROR: Butters Veg did not become healthy.' >&2
+          exit 1
+
+
+  # Cost-control automation: stop this instance at 23:59 Irish local time.
+  # This is STOP, not TERMINATE: EBS and the CloudFormation stack remain.
+  NightlyStopRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Policies:
+        - PolicyName: StopOnlyThisButtersVegInstance
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: ec2:StopInstances
+                Resource: !Sub 'arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/${WebInstance}'
+
+  NightlyStopSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Description: Stop the Butters Veg demo EC2 instance nightly at 23:59 Europe/Dublin.
+      State: ENABLED
+      ScheduleExpression: 'cron(59 23 * * ? *)'
+      ScheduleExpressionTimezone: Europe/Dublin
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+      Target:
+        Arn: arn:aws:scheduler:::aws-sdk:ec2:stopInstances
+        RoleArn: !GetAtt NightlyStopRole.Arn
+        Input: !Sub '{"InstanceIds":["${WebInstance}"]}'
+
+Outputs:
+  NightlyShutdownSchedule:
+    Description: EventBridge Scheduler that stops EC2 daily at 23:59 Europe/Dublin.
+    Value: !Ref NightlyStopSchedule
+  WebsiteUrl:
+    Description: Visit this URL from the IPv4 address permitted by the security group, after startup completes.
+    Value: !Sub 'http://${WebInstance.PublicIp}:8080/'
+  HealthUrl:
+    Description: Application health check; expected response is OK.
+    Value: !Sub 'http://${WebInstance.PublicIp}:8080/health'
+  InstanceId:
+    Description: Instance ID for EC2 and Systems Manager Session Manager.
+    Value: !Ref WebInstance
+  VpcId:
+    Value: !Ref AppVpc
+  SecurityGroupId:
+    Value: !Ref AppSecurityGroup
+  ApplicationLogGroup:
+    Description: Docker application stdout/stderr in CloudWatch Logs.
+    Value: !Ref AppLogGroup
