@@ -31,6 +31,8 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: eu-north-1
+          mask-aws-account-id: true
+          
 
       - name: Release the published Docker image in ECR
         shell: bash
