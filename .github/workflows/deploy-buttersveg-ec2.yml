@@ -94,3 +94,334 @@ jobs:
             --query 'images[0].imageId.imageDigest' --output text)
           [[ "$DIGEST" != None && -n "$DIGEST" ]] || {
             echo 'The image named in the successful release could not be found in ECR.' >&2
+            exit 1
+          }
+          SOURCE_DIGEST=$(aws ecr batch-get-image \
+            --region "$AWS_REGION" --repository-name butters-veg \
+            --image-ids "imageTag=$IMAGE_SHA" \
+            --query 'images[0].imageId.imageDigest' --output text)
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ && "$SOURCE_DIGEST" == "$DIGEST" ]] || {
+            echo 'Release and original image digests do not match.' >&2; exit 1;
+          }
+          echo "Verified released image digest $DIGEST"
+
+      - name: Create or update the EC2 CloudFormation stack (review changes first)
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Same stack and original infrastructure template as the manual deployment.
+          if aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+              --region "$AWS_REGION" >/tmp/buttersveg-stack.json 2>/tmp/buttersveg-stack.error; then
+            TYPE=UPDATE
+            CURRENT_STATUS=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+              --region "$AWS_REGION" --query 'Stacks[0].StackStatus' --output text)
+            case "$CURRENT_STATUS" in
+              CREATE_COMPLETE|UPDATE_COMPLETE|UPDATE_ROLLBACK_COMPLETE) ;;
+              *) echo "Stack is not ready for an update: $CURRENT_STATUS" >&2; exit 1 ;;
+            esac
+            # Ordinary application releases must not update the infrastructure or
+            # implicitly refresh the latest AMI. Compare the deployed original
+            # template and approved CIDR before creating an UPDATE change set.
+            aws cloudformation get-template --stack-name "$STACK_NAME" \
+              --template-stage Original --region "$AWS_REGION" \
+              --query TemplateBody --output json >/tmp/buttersveg-template.json
+            if python3 - <<'PY_COMPARE'
+          import json, os
+          from pathlib import Path
+          deployed = json.loads(Path('/tmp/buttersveg-template.json').read_text())
+          desired = Path('EC2/buttersveg-ec2.yml').read_text()
+          stack = json.loads(Path('/tmp/buttersveg-stack.json').read_text())['Stacks'][0]
+          params = {p['ParameterKey']: p['ParameterValue'] for p in stack.get('Parameters', [])}
+          def normalize(value):
+              return '\n'.join(line.rstrip() for line in value.splitlines()).strip()
+          identical = (isinstance(deployed, str) and normalize(deployed) == normalize(desired)
+                       and params.get('AllowedIpv4Cidr') == os.environ['ALLOWED_IPV4_CIDR'])
+          raise SystemExit(0 if identical else 1)
+          PY_COMPARE
+            then
+              echo 'Infrastructure template and access CIDR unchanged; retaining existing stack.'
+              exit 0
+            fi
+          elif grep -qi 'does not exist' /tmp/buttersveg-stack.error; then
+            TYPE=CREATE
+          else
+            cat /tmp/buttersveg-stack.error >&2
+            exit 1
+          fi
+
+          CHANGE_SET="buttersveg-ec2-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          if [[ "$TYPE" == CREATE ]]; then
+            PARAMS=(
+              "ParameterKey=ImageTag,ParameterValue=$IMAGE_SHA"
+              "ParameterKey=AllowedIpv4Cidr,ParameterValue=$ALLOWED_IPV4_CIDR"
+            )
+          else
+            # Avoid changing EC2 UserData on routine image updates. SSM updates Docker below.
+            PARAMS=(
+              'ParameterKey=ImageTag,UsePreviousValue=true'
+              "ParameterKey=AllowedIpv4Cidr,ParameterValue=$ALLOWED_IPV4_CIDR"
+              'ParameterKey=InstanceType,UsePreviousValue=true'
+              'ParameterKey=LatestAmiId,UsePreviousValue=true'
+            )
+          fi
+
+          aws cloudformation create-change-set \
+            --stack-name "$STACK_NAME" --change-set-name "$CHANGE_SET" \
+            --change-set-type "$TYPE" --template-body file://EC2/buttersveg-ec2.yml \
+            --parameters "${PARAMS[@]}" --capabilities CAPABILITY_IAM \
+            --region "$AWS_REGION" >/dev/null
+
+          STATUS='CREATE_PENDING'
+          for attempt in $(seq 1 60); do
+            STATUS=$(aws cloudformation describe-change-set --stack-name "$STACK_NAME" \
+              --change-set-name "$CHANGE_SET" --region "$AWS_REGION" \
+              --query Status --output text)
+            [[ "$STATUS" == CREATE_PENDING || "$STATUS" == CREATE_IN_PROGRESS ]] || break
+            sleep 5
+          done
+          if [[ "$STATUS" == FAILED ]]; then
+            REASON=$(aws cloudformation describe-change-set --stack-name "$STACK_NAME" \
+              --change-set-name "$CHANGE_SET" --region "$AWS_REGION" \
+              --query StatusReason --output text)
+            if [[ "$TYPE" == UPDATE && "$REASON" == *"didn't contain changes"* ]]; then
+              echo 'Infrastructure unchanged; existing EC2 stack retained.'
+              aws cloudformation delete-change-set --stack-name "$STACK_NAME" \
+                --change-set-name "$CHANGE_SET" --region "$AWS_REGION"
+              exit 0
+            fi
+            echo "CloudFormation change set failed: $REASON" >&2
+            exit 1
+          fi
+          [[ "$STATUS" == CREATE_COMPLETE ]] || { echo "Change set status: $STATUS" >&2; exit 1; }
+
+          aws cloudformation describe-change-set --stack-name "$STACK_NAME" \
+            --change-set-name "$CHANGE_SET" --region "$AWS_REGION" \
+            --query 'Changes[].ResourceChange.{Action:Action,Resource:LogicalResourceId,Replacement:Replacement}' \
+            --output json > /tmp/buttersveg-changes.json
+          cat /tmp/buttersveg-changes.json
+
+          # On existing infrastructure, never silently delete/replace resources.
+          # Replacement of EC2 can destroy the original root disk and its data.
+          if [[ "$TYPE" == UPDATE ]]; then
+            python3 - <<'PY_CHECK'
+          import json
+          changes = json.load(open('/tmp/buttersveg-changes.json', encoding='utf-8'))
+          risky = [c for c in changes if c['Action'] == 'Remove' or c['Replacement'] in ('True', 'Conditional')]
+          if risky:
+              raise SystemExit('Stopped: change set would remove or possibly replace resources: ' + str(risky))
+          PY_CHECK
+          fi
+
+          # Execute automatically; there is no manual stack creation or approval step.
+          aws cloudformation execute-change-set --stack-name "$STACK_NAME" \
+            --change-set-name "$CHANGE_SET" --region "$AWS_REGION"
+          if [[ "$TYPE" == CREATE ]]; then
+            aws cloudformation wait stack-create-complete --stack-name "$STACK_NAME" --region "$AWS_REGION"
+          else
+            aws cloudformation wait stack-update-complete --stack-name "$STACK_NAME" --region "$AWS_REGION"
+          fi
+          echo "CloudFormation $TYPE completed for $STACK_NAME"
+
+      - name: Start the stack's EC2 instance and wait for Systems Manager
+        id: instance
+        shell: bash
+        run: |
+          set -euo pipefail
+          INSTANCE_ID=$(aws cloudformation describe-stack-resource \
+            --stack-name "$STACK_NAME" --logical-resource-id WebInstance \
+            --region "$AWS_REGION" --query 'StackResourceDetail.PhysicalResourceId' --output text)
+          [[ "$INSTANCE_ID" =~ ^i-[a-f0-9]+$ ]] || { echo "Invalid instance ID: $INSTANCE_ID"; exit 1; }
+          echo "instance_id=$INSTANCE_ID" >> "$GITHUB_OUTPUT"
+
+          STATE=$(aws ec2 describe-instances --instance-ids "$INSTANCE_ID" \
+            --region "$AWS_REGION" --query 'Reservations[0].Instances[0].State.Name' --output text)
+          if [[ "$STATE" == stopping ]]; then
+            aws ec2 wait instance-stopped --instance-ids "$INSTANCE_ID" --region "$AWS_REGION"
+            STATE=stopped
+          fi
+          if [[ "$STATE" == stopped ]]; then
+            aws ec2 start-instances --instance-ids "$INSTANCE_ID" --region "$AWS_REGION" >/dev/null
+          elif [[ "$STATE" != running && "$STATE" != pending ]]; then
+            echo "Unexpected EC2 state $STATE" >&2
+            exit 1
+          fi
+          aws ec2 wait instance-running --instance-ids "$INSTANCE_ID" --region "$AWS_REGION"
+          for attempt in $(seq 1 60); do
+            PING=$(aws ssm describe-instance-information --region "$AWS_REGION" \
+              --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
+              --query 'InstanceInformationList[0].PingStatus' --output text)
+            if [[ "$PING" == Online ]]; then
+              echo "EC2 $INSTANCE_ID is running and SSM is online"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo 'EC2 started but Systems Manager never reported Online.' >&2
+          exit 1
+
+      - name: Deploy exactly the released ECR image and check application health
+        shell: bash
+        env:
+          INSTANCE_ID: ${{ steps.instance.outputs.instance_id }}
+        run: |
+          set -euo pipefail
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          [[ "$ACCOUNT_ID" =~ ^[0-9]{12}$ ]] || exit 1
+
+          # AWS-RunShellScript executes as root on the existing instance.
+          cat > /tmp/buttersveg-update.sh <<'REMOTE'
+          #!/bin/bash
+          set -euo pipefail
+          timeout 900 cloud-init status --wait >/dev/null
+          systemctl is-active --quiet docker
+          AWS_REGION='__REGION__'
+          ACCOUNT_ID='__ACCOUNT__'
+          IMAGE_TAG='__IMAGE_TAG__'
+          REGISTRY="$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+          NEW_IMAGE="$REGISTRY/butters-veg:$IMAGE_TAG"
+          CONTAINER=butters-veg
+          LOG_GROUP=/butters-veg/buttersveg-ec2
+          LOG_STREAM=buttersveg-ec2-application
+
+          run_container() {
+            docker run --detach --name "$CONTAINER" --restart unless-stopped \
+              --publish 8080:8080 \
+              --log-driver awslogs --log-opt "awslogs-region=$AWS_REGION" \
+              --log-opt "awslogs-group=$LOG_GROUP" --log-opt "awslogs-stream=$LOG_STREAM" \
+              --env PORT=8080 "$1" >/dev/null
+          }
+          healthy() {
+            for attempt in $(seq 1 45); do
+              if curl --fail --silent --max-time 5 http://127.0.0.1:8080/health >/dev/null; then return 0; fi
+              sleep 2
+            done
+            return 1
+          }
+
+          OLD_IMAGE=$(docker inspect --format '{{.Config.Image}}' "$CONTAINER" 2>/dev/null || true)
+          if [[ "$OLD_IMAGE" == "$NEW_IMAGE" ]] && healthy; then
+            echo "Already healthy: $NEW_IMAGE"
+            exit 0
+          fi
+          aws ecr get-login-password --region "$AWS_REGION" | \
+            docker login --username AWS --password-stdin "$REGISTRY" >/dev/null
+          docker pull "$NEW_IMAGE"
+          docker rm --force "$CONTAINER" >/dev/null 2>&1 || true
+          if run_container "$NEW_IMAGE" && healthy; then
+            echo "Deployment succeeded: $NEW_IMAGE"
+            exit 0
+          fi
+
+          echo 'New image did not pass /health; trying to restore prior container' >&2
+          docker logs --tail 40 "$CONTAINER" >&2 || true
+          docker rm --force "$CONTAINER" >/dev/null 2>&1 || true
+          if [[ -n "$OLD_IMAGE" ]]; then
+            if run_container "$OLD_IMAGE" && healthy; then
+              echo "Previous image restored: $OLD_IMAGE" >&2
+            else
+              echo 'Restoration attempt failed.' >&2
+            fi
+          fi
+          exit 1
+          REMOTE
+          sed -i -e "s/__REGION__/$AWS_REGION/g" \
+            -e "s/__ACCOUNT__/$ACCOUNT_ID/g" \
+            -e "s/__IMAGE_TAG__/$RELEASE_IMAGE_TAG/g" /tmp/buttersveg-update.sh
+          python3 - <<'PY_ARGS'
+          import json
+          from pathlib import Path
+          script = Path('/tmp/buttersveg-update.sh').read_text()
+          Path('/tmp/buttersveg-ssm.json').write_text(json.dumps({
+              'commands': [script], 'executionTimeout': ['1200']
+          }))
+          PY_ARGS
+
+          COMMAND_ID=$(aws ssm send-command --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript --region "$AWS_REGION" \
+            --parameters file:///tmp/buttersveg-ssm.json \
+            --query 'Command.CommandId' --output text)
+          echo "SSM command ID: $COMMAND_ID"
+          STATUS=Pending
+          for attempt in $(seq 1 130); do
+            STATUS=$(aws ssm get-command-invocation --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" --region "$AWS_REGION" \
+              --query Status --output text 2>/dev/null || true)
+            case "$STATUS" in
+              Success|Failed|Cancelled|TimedOut|DeliveryTimedOut|ExecutionTimedOut|Undeliverable|Terminated|InvalidPlatform|AccessDenied)
+                break ;;
+            esac
+            sleep 10
+          done
+          aws ssm get-command-invocation --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID" --region "$AWS_REGION" \
+            --query '{Status:Status,Output:StandardOutputContent,Errors:StandardErrorContent}' --output json
+          [[ "$STATUS" == Success ]] || { echo "Deployment failed: $STATUS" >&2; exit 1; }
+          PUBLIC_IP=$(aws ec2 describe-instances --instance-ids "$INSTANCE_ID" \
+            --region "$AWS_REGION" --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
+          echo 'Butters Veg EC2 deployment completed successfully.'
+          echo "Website (from approved IP only): http://$PUBLIC_IP:8080/"
+
+  # DEVELOPMENT / TESTING ONLY: when the nightly schedule has stopped EC2,
+  # use Actions > Butters Veg EC2 Deploy > Run workflow to restart it.
+  # This does NOT create a new instance or change the CloudFormation stack.
+  # When nightly shutdown is disabled, this job is no longer needed.
+  start-existing:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AWS_REGION: eu-north-1
+      STACK_NAME: buttersveg-ec2
+    steps:
+      - name: Authenticate with AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: eu-north-1
+          mask-aws-account-id: true
+
+      - name: Restart existing EC2 and verify application health
+        shell: bash
+        run: |
+          set -euo pipefail
+          INSTANCE_ID=$(aws cloudformation describe-stack-resource \
+            --stack-name "$STACK_NAME" --logical-resource-id WebInstance \
+            --region "$AWS_REGION" --query 'StackResourceDetail.PhysicalResourceId' --output text)
+          [[ "$INSTANCE_ID" =~ ^i-[a-f0-9]+$ ]] || { echo 'EC2 stack is not deployed yet.' >&2; exit 1; }
+          STATE=$(aws ec2 describe-instances --instance-ids "$INSTANCE_ID" \
+            --region "$AWS_REGION" --query 'Reservations[0].Instances[0].State.Name' --output text)
+          if [[ "$STATE" == stopping ]]; then
+            aws ec2 wait instance-stopped --instance-ids "$INSTANCE_ID" --region "$AWS_REGION"
+            STATE=stopped
+          fi
+          if [[ "$STATE" == stopped ]]; then
+            aws ec2 start-instances --instance-ids "$INSTANCE_ID" --region "$AWS_REGION" >/dev/null
+          elif [[ "$STATE" != running && "$STATE" != pending ]]; then
+            echo "Cannot restart instance in state $STATE" >&2
+            exit 1
+          fi
+          aws ec2 wait instance-running --instance-ids "$INSTANCE_ID" --region "$AWS_REGION"
+          for attempt in $(seq 1 60); do
+            PING=$(aws ssm describe-instance-information --region "$AWS_REGION" \
+              --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
+              --query 'InstanceInformationList[0].PingStatus' --output text)
+            if [[ "$PING" == Online ]]; then break; fi
+            sleep 10
+          done
+          [[ "$PING" == Online ]] || { echo 'SSM did not become available.' >&2; exit 1; }
+          COMMAND_ID=$(aws ssm send-command --region "$AWS_REGION" \
+            --document-name AWS-RunShellScript --instance-ids "$INSTANCE_ID" \
+            --parameters '{"commands":["for n in $(seq 1 30); do curl -fsS http://127.0.0.1:8080/health && exit 0; sleep 3; done; exit 1"]}' \
+            --query 'Command.CommandId' --output text)
+          STATUS=Pending
+          for attempt in $(seq 1 45); do
+            STATUS=$(aws ssm get-command-invocation --region "$AWS_REGION" \
+              --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" \
+              --query Status --output text 2>/dev/null || true)
+            case "$STATUS" in
+              Success|Failed|Cancelled|TimedOut|Undeliverable|Terminated) break ;;
+            esac
+            sleep 5
+          done
+          [[ "$STATUS" == Success ]] || { echo "Restart health check failed: $STATUS" >&2; exit 1; }
+          echo "Existing EC2 $INSTANCE_ID restarted and /health passed."
