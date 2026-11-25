@@ -69,6 +69,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: eu-north-1
+          mask-aws-account-id: true
 
       - name: Validate inputs and confirm released image exists
         shell: bash
@@ -93,4 +94,3 @@ jobs:
             --query 'images[0].imageId.imageDigest' --output text)
           [[ "$DIGEST" != None && -n "$DIGEST" ]] || {
             echo 'The image named in the successful release could not be found in ECR.' >&2
-            exit 1
