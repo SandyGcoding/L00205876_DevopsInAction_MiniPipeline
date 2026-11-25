@@ -1,4 +1,4 @@
-node {
+node ('Sandy') {
     stage('Get veg code from GitHub') {
         def revision = checkout scm
         echo "Checked out veg at Git commit ${revision.GIT_COMMIT}"
