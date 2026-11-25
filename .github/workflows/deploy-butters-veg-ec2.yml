@@ -2,7 +2,7 @@ name: Butters Veg EC2 Deploy
 
 # Only a successful ECR release on main can trigger an automatic EC2 deployment.
 # This single workflow creates the stack automatically on the first deployment.
-# The original infrastructure template remains in EC2/buttersveg-ec2.yml.
+# The original infrastructure template remains in EC2/butters-veg-ec2.yml.
 # AWS prerequisite: the existing GitHub OIDC role must have authorised CloudFormation
 # change-set/read operations and the underlying EC2, IAM, Logs, SSM and Scheduler
 # permissions for this template (or an approved CloudFormation execution role).
@@ -35,7 +35,7 @@ jobs:
     timeout-minutes: 60
     env:
       AWS_REGION: eu-north-1
-      STACK_NAME: buttersveg-ec2
+      STACK_NAME: butters-veg-ec2
       ALLOWED_IPV4_CIDR: ${{ vars.ALLOWED_IPV4_CIDR }}
       GH_TOKEN: ${{ github.token }}
       RELEASE_RUN_ID: ${{ github.event.workflow_run.id }}
@@ -86,7 +86,7 @@ jobs:
           PY_CIDR
           aws cloudformation validate-template \
             --region "$AWS_REGION" \
-            --template-body file://EC2/buttersveg-ec2.yml >/dev/null
+            --template-body file://EC2/butters-veg-ec2.yml >/dev/null
           DIGEST=$(aws ecr batch-get-image \
             --region "$AWS_REGION" \
             --repository-name butters-veg \
@@ -111,7 +111,7 @@ jobs:
           set -euo pipefail
           # Same stack and original infrastructure template as the manual deployment.
           if aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
-              --region "$AWS_REGION" >/tmp/buttersveg-stack.json 2>/tmp/buttersveg-stack.error; then
+              --region "$AWS_REGION" >/tmp/butters-veg-stack.json 2>/tmp/butters-veg-stack.error; then
             TYPE=UPDATE
             CURRENT_STATUS=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
               --region "$AWS_REGION" --query 'Stacks[0].StackStatus' --output text)
@@ -124,13 +124,13 @@ jobs:
             # template and approved CIDR before creating an UPDATE change set.
             aws cloudformation get-template --stack-name "$STACK_NAME" \
               --template-stage Original --region "$AWS_REGION" \
-              --query TemplateBody --output json >/tmp/buttersveg-template.json
+              --query TemplateBody --output json >/tmp/butters-veg-template.json
             if python3 - <<'PY_COMPARE'
           import json, os
           from pathlib import Path
-          deployed = json.loads(Path('/tmp/buttersveg-template.json').read_text())
-          desired = Path('EC2/buttersveg-ec2.yml').read_text()
-          stack = json.loads(Path('/tmp/buttersveg-stack.json').read_text())['Stacks'][0]
+          deployed = json.loads(Path('/tmp/butters-veg-template.json').read_text())
+          desired = Path('EC2/butters-veg-ec2.yml').read_text()
+          stack = json.loads(Path('/tmp/butters-veg-stack.json').read_text())['Stacks'][0]
           params = {p['ParameterKey']: p['ParameterValue'] for p in stack.get('Parameters', [])}
           def normalize(value):
               return '\n'.join(line.rstrip() for line in value.splitlines()).strip()
@@ -371,7 +371,7 @@ jobs:
     timeout-minutes: 20
     env:
       AWS_REGION: eu-north-1
-      STACK_NAME: buttersveg-ec2
+      STACK_NAME: butters-veg-ec2
     steps:
       - name: Authenticate with AWS
         uses: aws-actions/configure-aws-credentials@v4
