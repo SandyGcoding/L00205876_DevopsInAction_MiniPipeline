@@ -38,3 +38,5 @@ I sucessfully deployed a Cloudformations stack using Infrasture as code and I de
 Unfortunately the Java is not displaying what I want,
 Then, possibly because it is late, my VS Code glitched and I messed up my branch commits with an onerous git ignore.
 I use my Google Drive for my college work and laptop is old but a Google tip suggested I pause syncing when using GitHub. I suspect there may be a clash between GitHub changes and Google Drive searcging for changes even when it is not syncing.
+
+I was unable to automate Deploymnent to EC2 using this pipeline structure. I have decided to restart with my original python code and look at more suitable tools. Trying to convert it to Java just to use Maven was not a good idea.
