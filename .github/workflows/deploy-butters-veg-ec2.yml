@@ -12,7 +12,7 @@ on:
   workflow_run:
     workflows: ["Butters Veg ECR Release"]
     types: [completed]
-  workflow_dispatch:  # DEVELOPMENT ONLY: restart a stopped EC2 without a new release.
+  workflow_dispatch:  # DEVELOPMENT ONLY- restart a stopped EC2 without a new release.
 
 permissions:
   contents: read
