@@ -32,77 +32,78 @@ def LoadStock():
 
 #Create seperate function for "Buy"
 def BuyVeg(BVeg, BQuantity):
-    vegetable = LoadStock()
-    
-    # Validate quantity before processing the order
-    # TODO Add pop-up in HTML for user confirmation if Quantity entered > 30
-    if not isinstance(BQuantity, int) or BQuantity <= 0:
-        return "Please enter a valid positive whole number."
-    
-        # Retain server-side validation despite HTML dropdown restrictions
-    if BVeg not in vegetable:
-        return "This item is not listed."
-    else:
-        #Recheck stock in case another customer has made a purchase and system has not updated
-        available = vegetable[BVeg]
-        if BQuantity > available:
-            return f"Only {available} available."
+    with StockLock:
+        vegetable = LoadStock()    
+        # Validate quantity before processing the order
+        # TODO Add pop-up in HTML for user confirmation if Quantity entered > 30
+        if not isinstance(BQuantity, int) or BQuantity <= 0:
+            return "Please enter a valid positive whole number."
+        
+            # Retain server-side validation despite HTML dropdown restrictions
+        if BVeg not in vegetable:
+            return "This item is not listed."
         else:
-            #print(f"Thank you for purchasing {BQuantity} {BVeg}.")
-            vegetable[BVeg] -= BQuantity
-            #Deplete Stock quantity in Excel and save
+            #Recheck stock in case another customer has made a purchase and system has not updated
+            available = vegetable[BVeg]
+            if BQuantity > available:
+                return f"Only {available} available."
+            else:
+                #print(f"Thank you for purchasing {BQuantity} {BVeg}.")
+                vegetable[BVeg] -= BQuantity
+                #Deplete Stock quantity in Excel and save
+                workbook = load_workbook("Veg.xlsx")
+                sheet = workbook.active
+
+                for row in range(2, sheet.max_row + 1):
+                    if sheet.cell(row=row, column=1).value == BVeg:
+                        sheet.cell(row=row, column=2).value = vegetable[BVeg]
+                        break
+                    
+                workbook.save("Veg.xlsx")
+                workbook.close()
+                return f"Thank you for ordering {BQuantity} {BVeg}. \nPlease call us to arrange delivery"
+  
+#Create seperate function for "Sell"
+def SellVeg(SVeg, SQuantity):
+    with StockLock
+        vegetable = LoadStock()
+        
+        # Validate quantity before updating stock
+        # TODO Add pop-up in HTML for user confirmation if Quantity entered > 30
+        if not isinstance(SQuantity, int) or SQuantity <= 0:
+            return "Please enter a valid positive whole number."
+
+
+        # The HTML dropdown will include "Item not listed - Add new".
+        # Selecting this option will display a text field for the vegetable name and a numeric field for the quantity.
+        # Flask will pass these values to SellVeg().
+        if SVeg not in vegetable:
+            vegetable[SVeg] = SQuantity
+            
+            # Add new vegetable to Excel
+            workbook = load_workbook("Veg.xlsx")
+            sheet = workbook.active
+            sheet.append([SVeg, SQuantity])
+            workbook.save("Veg.xlsx")
+            workbook.close()
+
+            return f"Thank you. {SQuantity} {SVeg} added to stock. Please call us to arrange collection."
+            
+        else:
+            # Increase stock quantity for an existing vegetable
+            vegetable[SVeg] += SQuantity
+
+            # Update existing vegetable quantity in Excel
             workbook = load_workbook("Veg.xlsx")
             sheet = workbook.active
 
             for row in range(2, sheet.max_row + 1):
-                if sheet.cell(row=row, column=1).value == BVeg:
-                    sheet.cell(row=row, column=2).value = vegetable[BVeg]
+                if sheet.cell(row=row, column=1).value == SVeg:
+                    sheet.cell(row=row, column=2).value = vegetable[SVeg]
                     break
-                
+
             workbook.save("Veg.xlsx")
             workbook.close()
-            return f"Thank you for ordering {BQuantity} {BVeg}. \nPlease call us to arrange delivery"
-  
-#Create seperate function for "Sell"
-def SellVeg(SVeg, SQuantity):
-    vegetable = LoadStock()
-    
-    # Validate quantity before updating stock
-    # TODO Add pop-up in HTML for user confirmation if Quantity entered > 30
-    if not isinstance(SQuantity, int) or SQuantity <= 0:
-        return "Please enter a valid positive whole number."
 
-
-    # The HTML dropdown will include "Item not listed - Add new".
-    # Selecting this option will display a text field for the vegetable name and a numeric field for the quantity.
-    # Flask will pass these values to SellVeg().
-    if SVeg not in vegetable:
-        vegetable[SVeg] = SQuantity
-        
-        # Add new vegetable to Excel
-        workbook = load_workbook("Veg.xlsx")
-        sheet = workbook.active
-        sheet.append([SVeg, SQuantity])
-        workbook.save("Veg.xlsx")
-        workbook.close()
-
-        return f"Thank you. {SQuantity} {SVeg} added to stock. Please call us to arrange collection."
-        
-    else:
-        # Increase stock quantity for an existing vegetable
-        vegetable[SVeg] += SQuantity
-
-        # Update existing vegetable quantity in Excel
-        workbook = load_workbook("Veg.xlsx")
-        sheet = workbook.active
-
-        for row in range(2, sheet.max_row + 1):
-            if sheet.cell(row=row, column=1).value == SVeg:
-                sheet.cell(row=row, column=2).value = vegetable[SVeg]
-                break
-
-        workbook.save("Veg.xlsx")
-        workbook.close()
-
-        return f"Thank you. Stock quantity for {SVeg} has been updated to {vegetable[SVeg]}.\nPlease call us to arrange collection."
+            return f"Thank you. Stock quantity for {SVeg} has been updated to {vegetable[SVeg]}.\nPlease call us to arrange collection."
 
