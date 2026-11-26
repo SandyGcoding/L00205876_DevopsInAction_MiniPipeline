@@ -1,6 +1,37 @@
 node ('Sandy') {
+
     stage('Get veg code from GitHub') {
         def revision = checkout scm
         echo "Checked out veg at Git commit ${revision.GIT_COMMIT}"
+    }
+
+    stage('Build') {
+
+        echo 'Creating Python virtual environment'
+
+        bat 'py -m venv .venv'
+
+        echo 'Installing application and testing dependencies'
+
+        bat '.venv\\Scripts\\python.exe -m pip install -r Build\\requirements.txt'
+
+        echo 'Checking Python syntax'
+
+        bat '.venv\\Scripts\\python.exe -m compileall Code Tests'
+    }
+
+    stage('Automated Testing') {
+
+        echo 'Executing automated Python tests'
+
+        try {
+            bat '.venv\\Scripts\\python.exe -m pytest Tests -v --junitxml=TestResults.xml --cov=Code.ButtersVegApp --cov-report=term-missing --cov-report=xml:coverage.xml --cov-report=html'
+        }
+        finally {
+            junit 'TestResults.xml'
+
+            archiveArtifacts artifacts: 'coverage.xml,htmlcov/**',
+                             allowEmptyArchive: true
+        }
     }
 }
