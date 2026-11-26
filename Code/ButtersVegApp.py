@@ -112,3 +112,51 @@ def SellVeg(SVeg, SQuantity):
 
             return f"Thank you. Stock quantity for {SVeg} has been updated to {vegetable[SVeg]}.\nPlease call us to arrange collection."
 
+
+
+# Display website and process customer transactions
+@app.route("/", methods=["GET", "POST"])
+def Home():
+
+    message = ""
+
+    if request.method == "POST":
+
+        Action = request.form.get("Action")
+        Veg = request.form.get("Vegetable", "")
+
+        # Convert quantity received from HTML to an integer
+        try:
+            Quantity = int(request.form.get("Quantity", ""))
+        except ValueError:
+            Quantity = 0
+
+        # Process customer purchase
+        if Action == "Buy":
+            message = BuyVeg(Veg, Quantity)
+
+        # Process customer sale
+        elif Action == "Sell":
+
+            if Veg == "__NEW__":
+                Veg = request.form.get("NewVeg", "")
+
+            message = SellVeg(Veg, Quantity)
+
+        else:
+            message = "Please select Buy or Sell."
+
+    # Retrieve updated stock for display on website
+    with StockLock:
+        vegetable = LoadStock()
+
+    return render_template(
+        "ButtersVeg.html",
+        vegetable=vegetable,
+        message=message
+    )
+
+
+# Start Flask web application
+if __name__ == "__main__":
+    app.run()
