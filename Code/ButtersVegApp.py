@@ -31,7 +31,7 @@ def LoadStock():
     return vegetable 
 
 #Create seperate function for "Buy"
-def BuyVeg(BVeg, BQuantity):
+def BuyVeg(BVeg, BQuantity):  
     with StockLock:
         vegetable = LoadStock()    
         # Validate quantity before processing the order
@@ -39,7 +39,7 @@ def BuyVeg(BVeg, BQuantity):
         if not isinstance(BQuantity, int) or BQuantity <= 0:
             return "Please enter a valid positive whole number."
         
-            # Retain server-side validation despite HTML dropdown restrictions
+        # Retain server-side validation despite HTML dropdown restrictions
         if BVeg not in vegetable:
             return "This item is not listed."
         else:
@@ -65,7 +65,12 @@ def BuyVeg(BVeg, BQuantity):
   
 #Create seperate function for "Sell"
 def SellVeg(SVeg, SQuantity):
-    with StockLock
+    # Validate and standardise vegetable name
+    SVeg = SVeg.strip().title()
+
+    if not SVeg or not SVeg.replace(" ", "").isalpha():
+        return "Please enter a valid vegetable name."    
+    with StockLock:
         vegetable = LoadStock()
         
         # Validate quantity before updating stock
