@@ -6,6 +6,8 @@ from openpyxl import load_workbook
 from flask import Flask, render_template, request
 app = Flask(__name__)
 
+#TODO: Replace terminal input with Flask request.form when webpage is created
+#action = input("\nWould you like to Buy or Sell vegetables? Enter Buy, Sell , Exit  >>>  ")
 
 #Create Function for retrieval of stock in Veg.xlsx by Flask
 def LoadStock():
@@ -29,34 +31,33 @@ def BuyVeg(BVeg, BQuantity):
     vegetable = LoadStock()
     #Retain validation even though website will have dropdown. Two customers may try to make a purchase at once
     if BVeg not in vegetable:
-        return "This item is not listed.")
+        return "This item is not listed."
     else:
         #Recheck stock in case another customer has made a purchase and system has not updated
         available = vegetable[BVeg]
-            if BQuantity > available:
-                return f"Only {available} available."
-            else:
-                #print(f"Thank you for purchasing {BQuantity} {BVeg}.")
-                vegetable[BVeg] -= BQuantity
-                #Deplete Stock quantity in Excel and save
-                workbook = load_workbook("Veg.xlsx")
-                sheet = workbook.active
+        if BQuantity > available:
+            return f"Only {available} available."
+        else:
+            #print(f"Thank you for purchasing {BQuantity} {BVeg}.")
+            vegetable[BVeg] -= BQuantity
+            #Deplete Stock quantity in Excel and save
+            workbook = load_workbook("Veg.xlsx")
+            sheet = workbook.active
 
-                for row in range(2, sheet.max_row + 1):
-                    if sheet.cell(row=row, column=1).value == BVeg:
-                        sheet.cell(row=row, column=2).value = vegetable[BVeg]
-                        break
+            for row in range(2, sheet.max_row + 1):
+                if sheet.cell(row=row, column=1).value == BVeg:
+                    sheet.cell(row=row, column=2).value = vegetable[BVeg]
+                    break
                 
-                workbook.save("Veg.xlsx")
-                workbook.close()
-                return f"Thank you for ordering {BQuantity} {BVeg}. \nPlease call us to arrange delivery"
-    
+            workbook.save("Veg.xlsx")
+            workbook.close()
+            return f"Thank you for ordering {BQuantity} {BVeg}. \nPlease call us to arrange delivery"
+  
 #Create seperate function for "Sell"
 def SellVeg(SVeg, SQuantity):
     vegetable = LoadStock()
 
-#TODO: Replace terminal input with Flask request.form when webpage is created
-action = input("\nWould you like to Buy or Sell vegetables? Enter Buy, Sell , Exit  >>>  ")
+
     # The HTML dropdown will include "Item not listed - Add new".
     # Selecting this option will display a text field for the vegetable name and a numeric field for the quantity.
     # Flask will pass these values to SellVeg().
