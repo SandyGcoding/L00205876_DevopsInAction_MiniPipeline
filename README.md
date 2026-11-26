@@ -40,3 +40,10 @@ Then, possibly because it is late, my VS Code glitched and I messed up my branch
 I use my Google Drive for my college work and laptop is old but a Google tip suggested I pause syncing when using GitHub. I suspect there may be a clash between GitHub changes and Google Drive searcging for changes even when it is not syncing.
 
 I was unable to automate Deploymnent to EC2 using this pipeline structure. I have decided to restart with my original python code and look at more suitable tools. Trying to convert it to Java just to use Maven was not a good idea.
+
+I created a new Pipeline in Jenkins and configured this repository. I added a test script to see if Jenkins could read the JenkinsFile.
+
+BUILD:
+I installed Flask for Python on my local machine.
+This will enable to users to ineract with the Butters Veg application through a web browser.
+I added a requirements file which shows application Python dependencies. This will suppor consistent, reproducible builds across environments.
