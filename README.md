@@ -47,3 +47,22 @@ BUILD:
 I installed Flask for Python on my local machine.
 This will enable to users to ineract with the Butters Veg application through a web browser.
 I added a requirements file which shows application Python dependencies. This will suppor consistent, reproducible builds across environments.
+
+
+CODE:
+After installing Flask, I modified my original code to allow user interaction on the web page.
+I used PyTest to test bugs and coverage and I saved the results in the evidence folder. I also recorded an MP4 of the website working as expected on my local browser.
+    1. A user can buy a vegetable listed and select a quantity
+        A user cannot order more than the maximum quatity listed
+        Zero quantity items show in stock but are not available to the user in the dropdown
+        If a user orders more than 30units a prompt appears for the action to be confirmed or they can go back
+    2. A user can sell a vegetable listed and add a quantity
+        A user can add quantity they choose but they will be asked to confirm quantity if they add over 30units
+    3. A user can sell an item not listed by selecting "Item not listed - Add new"
+         Current Stock list will update with the new vegetable and quantity
+         If a user adds an existing vegetable, the quantity in stock will increase but the Vegetable will not duplicate
+         If a user tries to add symbols or numbers to the vegetable name they will be unable to add a quantity and complete their entry.
+         If a user adds a decimal value to quantity they will be prompted to add a value greater than or equal to 1
+            Letters are not permitted in this field.
+
+    
