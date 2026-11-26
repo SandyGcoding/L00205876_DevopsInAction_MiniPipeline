@@ -29,6 +29,12 @@ def LoadStock():
 #Create seperate function for "Buy"
 def BuyVeg(BVeg, BQuantity):
     vegetable = LoadStock()
+    
+    # Validate quantity before processing the order
+    # TODO Add pop-up in HTML for user confirmation if Quantity entered > 30
+    if not isinstance(BQuantity, int) or BQuantity <= 0:
+        return "Please enter a valid positive whole number."
+    
     #Retain validation even though website will have dropdown. Two customers may try to make a purchase at once
     if BVeg not in vegetable:
         return "This item is not listed."
@@ -56,6 +62,11 @@ def BuyVeg(BVeg, BQuantity):
 #Create seperate function for "Sell"
 def SellVeg(SVeg, SQuantity):
     vegetable = LoadStock()
+    
+    # Validate quantity before updating stock
+    # TODO Add pop-up in HTML for user confirmation if Quantity entered > 30
+    if not isinstance(SQuantity, int) or SQuantity <= 0:
+        return "Please enter a valid positive whole number."
 
 
     # The HTML dropdown will include "Item not listed - Add new".
