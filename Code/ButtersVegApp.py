@@ -57,57 +57,36 @@ def SellVeg(SVeg, SQuantity):
 
 #TODO: Replace terminal input with Flask request.form when webpage is created
 action = input("\nWould you like to Buy or Sell vegetables? Enter Buy, Sell , Exit  >>>  ")
-
-if action.strip().lower() == "buy":
-    BVeg = input("\nWhich vegetable would you like to buy? ").strip().capitalize()
-
-
-        BQuantity = int(input("\nPlease enter quantity: "))
-
-        if BQuantity > available:
-            print(f"\nOnly {available} available.")
-        else:
-            print(f"Thank you for purchasing {BQuantity} {BVeg}.")
-            vegetable[BVeg] -= BQuantity
-            for row in range(2, sheet.max_row + 1):
-                if sheet.cell(row=row, column=1).value == BVeg:
-                   sheet.cell(row=row, column=2).value = vegetable[BVeg]
-                   workbook.save("Veg.xlsx")
-                   print(vegetable)
-                   raise SystemExit("Exiting program.")
-elif action.strip().lower() == "sell":
-    SVeg = input("\nWhich vegetables would you like to sell? ").strip().capitalize()
+    # The HTML dropdown will include "Item not listed - Add new".
+    # Selecting this option will display a text field for the vegetable name and a numeric field for the quantity.
+    # Flask will pass these values to SellVeg().
     if SVeg not in vegetable:
-        add_veg = input(f"{SVeg} are not listed. Would you like to add {SVeg}? >>> (y/n) ")
-        if add_veg.strip().lower() == "y":
-            vegetable[SVeg] = 0
-            sheet.append([SVeg, vegetable[SVeg]])
-            workbook.save("Veg.xlsx")
-            print(f"{SVeg} has been added to the list.")
-            SQuantity = int(input("Please enter a quantity: "))
-            vegetable[SVeg] += SQuantity
-            print(f"{SVeg} in stock is now {vegetable[SVeg]}.")
-            sheet.cell(row=sheet.max_row, column=2).value = vegetable[SVeg]
-            workbook.save("Veg.xlsx")
-            print(vegetable)
-            raise SystemExit("Exiting program.")
-        else:
-            raise SystemExit("Exiting program.")
-    elif SVeg in vegetable:
-        SQuantity = int(input("Please enter a quantity: "))
+        vegetable[SVeg] = SQuantity
+        
+        # Add new vegetable to Excel
+        workbook = load_workbook("Veg.xlsx")
+        sheet = workbook.active
+        sheet.append([SVeg, SQuantity])
+        workbook.save("Veg.xlsx")
+        workbook.close()
+
+        return f"Thank you. {SQuantity} {SVeg} added to stock. Please call us to arrange collection."
+        
+    else:
+        # Increase stock quantity for an existing vegetable
         vegetable[SVeg] += SQuantity
-        print(f"{SVeg} in stock is now {vegetable[SVeg]}.")
+
+        # Update existing vegetable quantity in Excel
+        workbook = load_workbook("Veg.xlsx")
+        sheet = workbook.active
+
         for row in range(2, sheet.max_row + 1):
             if sheet.cell(row=row, column=1).value == SVeg:
                 sheet.cell(row=row, column=2).value = vegetable[SVeg]
-                workbook.save("Veg.xlsx")
-                print(vegetable)
-                raise SystemExit("Exiting program.")
-else:
-    raise SystemExit("Exiting program.")        
-           
+                break
 
+        workbook.save("Veg.xlsx")
+        workbook.close()
 
-
-
+        return f"Thank you. Stock quantity for {SVeg} has been updated to {vegetable[SVeg]}.\nPlease call us to arrange collection."
 
