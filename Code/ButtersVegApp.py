@@ -1,10 +1,14 @@
 #ButtersVegApp
 
 from openpyxl import load_workbook
+from threading import Lock
 
 #Create web application, display HTML Template, receive customer information entered
 from flask import Flask, render_template, request
 app = Flask(__name__)
+
+# Prevent simultaneous stock updates
+StockLock = Lock()
 
 #TODO: Replace terminal input with Flask request.form when webpage is created
 #action = input("\nWould you like to Buy or Sell vegetables? Enter Buy, Sell , Exit  >>>  ")
@@ -35,7 +39,7 @@ def BuyVeg(BVeg, BQuantity):
     if not isinstance(BQuantity, int) or BQuantity <= 0:
         return "Please enter a valid positive whole number."
     
-    #Retain validation even though website will have dropdown. Two customers may try to make a purchase at once
+        # Retain server-side validation despite HTML dropdown restrictions
     if BVeg not in vegetable:
         return "This item is not listed."
     else:
