@@ -1,0 +1,26 @@
+# Windows system files
+desktop.ini
+Thumbs.db
+$RECYCLE.BIN/
+
+# Python generated files
+__pycache__/
+*.pyc
+
+# Pytest generated files
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Python virtual environments
+.venv/
+venv/
+
+# VS Code local settings
+.vscode/
+
+# Excel temporary files
+~$*.xlsx
+
+# Environment files containing secrets
+.env
