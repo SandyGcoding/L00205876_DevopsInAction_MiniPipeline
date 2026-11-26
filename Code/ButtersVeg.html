@@ -1,0 +1,333 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Butters Veg</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f7f8f2;
+            color: #29452b;
+        }
+
+        header {
+            background: #315b36;
+            color: white;
+            padding: 20px 6%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        nav a {
+            color: white;
+            margin-left: 20px;
+            text-decoration: none;
+        }
+
+        .banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            background: #e5eddc;
+            padding: 30px 6%;
+        }
+
+        .banner img {
+            width: 280px;
+            max-width: 100%;
+            border-radius: 15px;
+        }
+
+        h1 {
+            font-size: 40px;
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            padding: 30px 6%;
+        }
+
+        section {
+            background: white;
+            padding: 25px;
+            border: 1px solid #d5dfcf;
+            border-radius: 12px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #d5dfcf;
+        }
+
+        th {
+            background: #315b36;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background: #f2f6ee;
+        }
+
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        select, input, button {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px;
+            margin-top: 8px;
+            border: 1px solid #aebfa7;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        button {
+            background: #315b36;
+            color: white;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .message {
+            background: #e5eddc;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 6px;
+            white-space: pre-line;
+        }
+
+        footer {
+            background: #315b36;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h2>Butters Veg</h2>
+
+        <nav>
+            <a href="/">Home</a>
+            <a href="#Stock">Available Stock</a>
+            <a href="#Order">Buy or Sell</a>
+        </nav>
+    </header>
+
+    <div class="banner">
+        <div>
+            <h1>Welcome to Butters Veg</h1>
+            <h2>Fresh. Local. Community.</h2>
+            <p>Connecting local growers with local customers.</p>
+            <p>Buy and sell fresh vegetables in your community.</p>
+        </div>
+
+        <img src="{{ url_for('static', filename='Butters.jpg') }}"
+             alt="Butters, our friendly mascot">
+    </div>
+
+    <main>
+
+        <!-- Display current stock from Excel -->
+        <section id="Stock">
+            <h2>Available Stock</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Vegetable</th>
+                        <th>Quantity</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for veg, quantity in vegetable.items() %}
+                    <tr>
+                        <td>{{ veg }}</td>
+                        <td>{{ quantity }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Customer transaction form -->
+        <section id="Order">
+            <h2>Would you like to Buy or Sell?</h2>
+
+            <form method="POST" action="/" id="VegForm">
+
+                <label for="Action">Select an action</label>
+
+                <select id="Action" name="Action" required>
+                    <option value="Buy">Buy</option>
+                    <option value="Sell">Sell</option>
+                </select>
+
+                <label for="Vegetable">Select a vegetable</label>
+
+                <select id="Vegetable"
+                        name="Vegetable" required>
+                </select>
+
+                <!-- Display only when adding new vegetables -->
+                <div id="NewVegField" hidden>
+                    <label for="NewVeg">Vegetable name</label>
+
+                    <input type="text"
+                           id="NewVeg"
+                           name="NewVeg"
+                           disabled>
+                </div>
+
+                <label for="Quantity">Quantity</label>
+
+                <input type="number"
+                       id="Quantity"
+                       name="Quantity"
+                       min="1"
+                       step="1"
+                       required>
+
+                <button type="submit" id="SubmitButton">
+                    Confirm Transaction
+                </button>
+
+            </form>
+
+            <!-- Display messages returned by Python -->
+            {% if message %}
+            <div class="message" role="status">
+                {{ message }}
+            </div>
+            {% endif %}
+
+        </section>
+
+    </main>
+
+    <footer>
+        Butters Veg | Supporting our local community
+    </footer>
+
+    <script>
+
+        // Retrieve current stock from Flask
+        const Stock = {{ vegetable | tojson }};
+
+        const Action = document.getElementById("Action");
+        const Vegetable = document.getElementById("Vegetable");
+        const Quantity = document.getElementById("Quantity");
+        const NewVegField = document.getElementById("NewVegField");
+        const NewVeg = document.getElementById("NewVeg");
+        const SubmitButton = document.getElementById("SubmitButton");
+
+        // Populate vegetable dropdown based on Buy or Sell
+        function UpdateVegetables() {
+
+            Vegetable.replaceChildren();
+
+            Vegetable.add(new Option(
+                "Select a vegetable", ""
+            ));
+
+            for (const [veg, quantity] of Object.entries(Stock)) {
+
+                // Buyers can only select vegetables in stock
+                if (Action.value === "Buy" && quantity <= 0) {
+                    continue;
+                }
+
+                Vegetable.add(new Option(veg, veg));
+            }
+
+            // Sellers can add vegetables not already listed
+            if (Action.value === "Sell") {
+                Vegetable.add(new Option(
+                    "Item not listed - Add new", "__NEW__"
+                ));
+            }
+
+            UpdateQuantity();
+        }
+
+        // Restrict purchase quantity and display new item field
+        function UpdateQuantity() {
+
+            Quantity.value = "";
+            Quantity.removeAttribute("max");
+
+            const AddingNew =
+                Action.value === "Sell" &&
+                Vegetable.value === "__NEW__";
+
+            NewVegField.hidden = !AddingNew;
+            NewVeg.disabled = !AddingNew;
+            NewVeg.required = AddingNew;
+
+            if (!AddingNew) {
+                NewVeg.value = "";
+            }
+
+            if (Action.value === "Buy" && Vegetable.value) {
+                Quantity.max = Stock[Vegetable.value];
+            }
+
+            Quantity.disabled = !Vegetable.value;
+            SubmitButton.disabled = !Vegetable.value;
+        }
+
+        Action.addEventListener("change", UpdateVegetables);
+
+        Vegetable.addEventListener("change", UpdateQuantity);
+
+        // Request confirmation for large transactions
+        document.getElementById("VegForm")
+            .addEventListener("submit", function(event) {
+
+                if (Number(Quantity.value) > 30) {
+
+                    const Confirmed = window.confirm(
+                        "You have entered a quantity greater than 30. " +
+                        "Are you sure you wish to continue?"
+                    );
+
+                    if (!Confirmed) {
+                        event.preventDefault();
+                    }
+                }
+            });
+
+        // Populate dropdown when page first loads
+        UpdateVegetables();
+
+    </script>
+
+</body>
+</html>
