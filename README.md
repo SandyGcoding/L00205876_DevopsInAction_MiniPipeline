@@ -65,4 +65,7 @@ I used PyTest to test bugs and coverage and I saved the results in the evidence 
          If a user adds a decimal value to quantity they will be prompted to add a value greater than or equal to 1
             Letters are not permitted in this field.
 
+BUILD:
+I added the tests from PyTest to requirements and updated my JenkinsFile.
+When I ran the build in Jenkins the Debugging test ran as per VSCode  the was 100%. As I had added Flash to the Python file for the HTML integration the test coverage had depleted as expected.
     
