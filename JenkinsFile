@@ -59,6 +59,110 @@ node ('Sandy') {
         bat '.venv313\\Scripts\\python.exe -m pip_audit --local'
     }
     }
+    def ImageTag = ''
+    def LocalImage = ''
+
+    stage('Docker Build') {
+
+        echo 'Checking Docker availability'
+
+        bat 'docker version'
+
+        ImageTag = bat(
+            script: '@git rev-parse HEAD',
+            returnStdout: true
+        ).trim()
+
+        LocalImage = "butters-veg:${ImageTag}"
+
+        echo "Building Docker image ${LocalImage}"
+
+        bat "docker build -f Release/DockerFile -t ${LocalImage} ."
+    }
+
+    stage('Container Smoke Test') {
+
+        withCredentials([
+            string(
+                credentialsId: 'ButtersVegSecretKey',
+                variable: 'BUTTERS_VEG_SECRET_KEY'
+            )
+        ]) {
+
+            try {
+
+                bat "docker run -d --name butters-veg-test-${env.BUILD_NUMBER} -p 127.0.0.1:5001:5000 -e BUTTERS_VEG_SECRET_KEY ${LocalImage}"
+
+                retry(5) {
+                    sleep time: 5, unit: 'SECONDS'
+
+                    bat 'curl.exe --fail --silent --show-error http://127.0.0.1:5001/ -o ContainerTest.html'
+                }
+
+                bat 'findstr /I /C:"Butters Veg" ContainerTest.html'
+
+                echo 'Butters Veg container smoke test passed'
+
+            } finally {
+
+                bat returnStatus: true,
+                    script: "docker logs butters-veg-test-${env.BUILD_NUMBER}"
+
+                bat returnStatus: true,
+                    script: "docker rm -f butters-veg-test-${env.BUILD_NUMBER}"
+            }
+        }
+    }
+
+    stage('Container Security - Trivy') {
+
+        echo 'Scanning Docker image for known vulnerabilities'
+
+        bat "docker save -o ButtersVegImage.tar ${LocalImage}"
+
+        try {
+
+            bat "docker run --rm -v \"%CD%:/scan\" aquasec/trivy:0.69.3 image --input /scan/ButtersVegImage.tar --severity HIGH,CRITICAL --exit-code 1"
+
+        } finally {
+
+            bat returnStatus: true,
+                script: 'del /Q ButtersVegImage.tar'
+        }
+    }
+
+    stage('Release - Docker Hub') {
+
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'DockerHubCredentials',
+                usernameVariable: 'DOCKERHUB_USERNAME',
+                passwordVariable: 'DOCKERHUB_TOKEN'
+            )
+        ]) {
+
+            try {
+
+                powershell '''
+                    $env:DOCKERHUB_TOKEN | docker login --username $env:DOCKERHUB_USERNAME --password-stdin
+                    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+                '''
+
+                def ReleaseImage = "${env.DOCKERHUB_USERNAME}/butters-veg:${ImageTag}"
+
+                bat "docker tag ${LocalImage} ${ReleaseImage}"
+
+                bat "docker push ${ReleaseImage}"
+
+                echo "Successfully released ${ReleaseImage}"
+
+            } finally {
+
+                bat returnStatus: true,
+                    script: 'docker logout'
+            }
+        }
+    }
 
 
 
