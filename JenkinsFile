@@ -123,7 +123,7 @@ node ('Sandy') {
 
         try {
 
-            bat "docker run --rm -v \"%CD%:/scan\" aquasec/trivy:0.69.3 image --input /scan/ButtersVegImage.tar --severity HIGH,CRITICAL --exit-code 1"
+            bat "docker run --rm -v \"%CD%:/scan\" aquasec/trivy:0.76.2 image --input /scan/ButtersVegImage.tar --severity HIGH,CRITICAL --exit-code 1"
 
         } finally {
 
