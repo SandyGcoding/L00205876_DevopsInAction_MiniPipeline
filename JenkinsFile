@@ -4,20 +4,20 @@ node ('Sandy') {
         def revision = checkout scm
         echo "Checked out veg at Git commit ${revision.GIT_COMMIT}"
     }
-
+    #specify python 3.13 in build for SonarQube compatability
     stage('Build') {
 
-        echo 'Creating Python virtual environment'
+        echo 'Verifying Python version'
+        bat 'py -3.13 --version'
 
-        bat 'py -m venv .venv'
+        echo 'Creating Python 3.13 virtual environment'
+        bat 'py -3.13 -m venv .venv313'
 
         echo 'Installing application and testing dependencies'
-
-        bat '.venv\\Scripts\\python.exe -m pip install -r Build\\requirements.txt'
+        bat '.venv313\\Scripts\\python.exe -m pip install -r Build\\requirements.txt'
 
         echo 'Checking Python syntax'
-
-        bat '.venv\\Scripts\\python.exe -m compileall Code Tests'
+        bat '.venv313\\Scripts\\python.exe -m compileall Code Tests'
     }
 
     stage('Automated Testing') {
@@ -26,8 +26,8 @@ node ('Sandy') {
 
         withCredentials([string(credentialsId: 'ButtersVegSecretKey', variable: 'BUTTERS_VEG_SECRET_KEY')]) {
 
-            try {
-                bat '.venv\\Scripts\\python.exe -m pytest Tests -v --junitxml=TestResults.xml --cov=Code.ButtersVegApp --cov-report=term-missing --cov-report=xml:coverage.xml --cov-report=html'
+            try { #specify python 3.13 in testing for SonarQube compatability
+               bat '.venv313\\Scripts\\python.exe -m pytest Tests -v --junitxml=TestResults.xml --cov=Code.ButtersVegApp --cov-report=term-missing --cov-report=xml:coverage.xml --cov-report=html'
             }
             finally {
                 junit 'TestResults.xml'
