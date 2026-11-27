@@ -1,0 +1,29 @@
+FROM python:3.13-slim AS Builder
+
+WORKDIR /Build
+
+COPY Release/requirements.txt .
+
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+
+FROM python:3.13-slim
+
+WORKDIR /app
+
+COPY --from=Builder /install /usr/local
+
+RUN useradd --create-home appuser
+
+COPY --chown=appuser:appuser Code/ButtersVegApp.py .
+COPY --chown=appuser:appuser Code/Veg.xlsx .
+COPY --chown=appuser:appuser Code/templates/ ./templates/
+COPY --chown=appuser:appuser Code/static/ ./static/
+
+RUN chown appuser:appuser /app
+
+USER appuser
+
+EXPOSE 5000
+
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--threads", "4", "--access-logfile", "-", "ButtersVegApp:app"]
