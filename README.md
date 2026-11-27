@@ -147,4 +147,10 @@ The subsequent SonarQube analysis confirmed that the identified security issue h
 
 Further demonstrates the importance of integrating static analysis, security remediation and automated regression testing into the CI/CD pipeline.
 
-TODO: Invetsigate dependency vulmerability with Python Version
+TODO: Invetsigate dependency vulmerability with Python Version - DONE
+
+I installed Python 3.13 on my local machine to ensure I was within the recommended Python Version range recommended by SonarQube.
+I modified my JenkinsFile to specify Python 3.13 both in the build and testing.
+I specified Python 3.13 in sonar-project.properties.
+There have been no changes made to the source code files.
+
