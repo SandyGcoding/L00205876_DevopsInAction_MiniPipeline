@@ -1,4 +1,4 @@
-FROM python:3.13-slim AS Builder
+FROM python:3.13-slim AS builder
 
 WORKDIR /Build
 
@@ -11,7 +11,7 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-COPY --from=Builder /install /usr/local
+COPY --from=builder /install /usr/local
 
 RUN useradd --create-home appuser
 
