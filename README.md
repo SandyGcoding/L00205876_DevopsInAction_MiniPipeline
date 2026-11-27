@@ -71,3 +71,12 @@ When I ran the build in Jenkins the Debugging test ran as per VSCode  the was 10
     
 Tests:
 In VSCode I added additional tests to the file test_Code_ButtersVegApp.py and ran the PyTests again. Coverage increased to 95%.
+
+Security:
+Static Code Analysis with SonarQube
+I want to use SonarQube to identify code quality issues and potential security vulnerabilities.
+    In SonarQube I created a local project called ButtersVeg and generated a project-specific analysis token
+    In Jenkins I installed the SonarQube plugin to integrate the two tools
+    I stored the SonarQube token as a secret text in Jenkins Credentials - no exposure in GitHub or Google Drive
+    In Jenkins I configured http://localhost:9000 for the SonarQube Server connection and the automatic installation of the SonarQube Scanner latest version 8.5.0.16571
+
