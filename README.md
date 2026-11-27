@@ -80,3 +80,41 @@ I want to use SonarQube to identify code quality issues and potential security v
     I stored the SonarQube token as a secret text in Jenkins Credentials - no exposure in GitHub or Google Drive
     In Jenkins I configured http://localhost:9000 for the SonarQube Server connection and the automatic installation of the SonarQube Scanner latest version 8.5.0.16571
 
+Security and Automated Pipeline Integration
+
+SonarQube was successfully integrated into the Jenkins pipeline following the automated build and testing stages.
+A `sonar-project.properties` configuration file was created to define the application source code, test directory, coverage report location and Quality Gate requirements.
+Jenkins automatically executes the SonarQube Scanner, uploads the analysis results to the SonarQube server and waits for the Quality Gate result before allowing the pipeline to progress.
+
+    Initial Static Analysis Results
+    | Metric | Result |
+    |---|---|
+    | Jenkins execution | SUCCESS |
+    | Quality Gate | PASSED |
+    | Code coverage | 98.8% |
+    | Code duplication | 0.0% |
+    | Reliability | A |
+    | Maintainability | A |
+    | Security | D |
+    | Security issues | 1 – High severity |
+    | Security hotspots | 0 |
+
+Security Issue Identified
+    SonarQube identified a high-severity security issue relating to Cross-Site Request Forgery (CSRF) protection within the Flask application.
+    This demonstrates the value of incorporating automated static analysis into the CI/CD pipeline, as the application passed all 30 automated tests but still contained a potential security           weakness.
+    The Quality Gate passed despite the identified security issue. This highlights the importance of reviewing Quality Gate conditions rather than relying solely on a successful pipeline              execution.
+
+Analysis Warning
+    SonarQube issued a warning relating to Python version compatibility. The default analysis covers Python versions 3.10 to 3.14, whereas the current Jenkins build environment uses Python             3.15.2.
+    The warning did not prevent successful analysis. Explicit Python version configuration will be considered once scanner compatibility has been confirmed.
+
+Further Security Improvements
+
+- Implement CSRF protection.
+- Update automated integration tests to accommodate CSRF protection.
+- Review and strengthen Quality Gate conditions.
+- Introduce dependency vulnerability scanning.
+- Demonstrate that security failures prevent further pipeline progression.
+
+Screenshots of the successful Jenkins execution, SonarQube analysis results and identified security issue are retained in the Evidence directory.
+

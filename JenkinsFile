@@ -24,14 +24,17 @@ node ('Sandy') {
 
         echo 'Executing automated Python tests'
 
-        try {
-            bat '.venv\\Scripts\\python.exe -m pytest Tests -v --junitxml=TestResults.xml --cov=Code.ButtersVegApp --cov-report=term-missing --cov-report=xml:coverage.xml --cov-report=html'
-        }
-        finally {
-            junit 'TestResults.xml'
+        withCredentials([string(credentialsId: 'ButtersVegSecretKey', variable: 'BUTTERS_VEG_SECRET_KEY')]) {
 
-            archiveArtifacts artifacts: 'coverage.xml,htmlcov/**',
-                             allowEmptyArchive: true
+            try {
+                bat '.venv\\Scripts\\python.exe -m pytest Tests -v --junitxml=TestResults.xml --cov=Code.ButtersVegApp --cov-report=term-missing --cov-report=xml:coverage.xml --cov-report=html'
+            }
+            finally {
+                junit 'TestResults.xml'
+
+                archiveArtifacts artifacts: 'coverage.xml,htmlcov/**',
+                                 allowEmptyArchive: true
+            }
         }
     }
 
