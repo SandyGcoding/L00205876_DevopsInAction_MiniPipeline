@@ -100,16 +100,15 @@ Jenkins automatically executes the SonarQube Scanner, uploads the analysis resul
     | Security hotspots | 0 |
 
 Security Issue Identified
-    SonarQube identified a high-severity security issue relating to Cross-Site Request Forgery (CSRF) protection within the Flask application.
-    This demonstrates the value of incorporating automated static analysis into the CI/CD pipeline, as the application passed all 30 automated tests but still contained a potential security           weakness.
-    The Quality Gate passed despite the identified security issue. This highlights the importance of reviewing Quality Gate conditions rather than relying solely on a successful pipeline              execution.
+ - SonarQube identified a high-severity security issue relating to Cross-Site Request Forgery (CSRF) protection within the Flask application.
+ - This demonstrates the value of incorporating automated static analysis into the CI/CD pipeline, as the application passed all 30 automated tests but still contained a      potential security weakness.
+ - The Quality Gate passed despite the identified security issue. This highlights the importance of reviewing Quality Gate conditions rather than relying solely on a         successful pipeline execution.
 
 Analysis Warning
-    SonarQube issued a warning relating to Python version compatibility. The default analysis covers Python versions 3.10 to 3.14, whereas the current Jenkins build environment uses Python             3.15.2.
-    The warning did not prevent successful analysis. Explicit Python version configuration will be considered once scanner compatibility has been confirmed.
+ - SonarQube issued a warning relating to Python version compatibility. The default analysis covers Python versions 3.10 to 3.14, whereas the current Jenkins build            environment uses Python 3.15.2.
+ - The warning did not prevent successful analysis. Explicit Python version configuration will be considered once scanner compatibility has been confirmed.
 
 Further Security Improvements
-
 - Implement CSRF protection.
 - Update automated integration tests to accommodate CSRF protection.
 - Review and strengthen Quality Gate conditions.
@@ -118,3 +117,34 @@ Further Security Improvements
 
 Screenshots of the successful Jenkins execution, SonarQube analysis results and identified security issue are retained in the Evidence directory.
 
+Security Remediation – CSRF Protection
+
+The initial SonarQube analysis identified a high-severity security issue relating to Cross-Site Request Forgery (CSRF), resulting in a security rating of D.
+The following corrective measures were implemented:
+- I integrated Flask-WTF to enable CSRF protection.
+- Then added a CSRF token to the website transaction form.
+- I generated a secure secret key and stored it within Jenkins Credentials rather than hardcoding it in the application or committing it to GitHub.
+- I Restricted access to the secret key to the automated testing stage, following the principle of least privilege.
+- I Updated the existing integration tests to accommodate CSRF protection.
+- Then added three automated security tests to verify that missing and invalid tokens are rejected without modifying stock and that valid transactions are accepted.
+
+Results – 27 November 2026
+| Metric | Result |
+|---|---|
+| Automated tests | 33/33 passed |
+| Test execution time | 3.57 seconds |
+| Pytest statement coverage | 99% |
+| SonarQube overall coverage | 98.9% |
+| New code coverage | 100% |
+| Security rating | Improved from D to A |
+| Reliability rating | A |
+| Maintainability rating | A |
+| Open issues | 0 |
+| Code duplication | 0.0% |
+| Security hotspots | 0 |
+
+The subsequent SonarQube analysis confirmed that the identified security issue had been resolved. All existing functional tests and the additional security tests passed, demonstrating successful remediation without introducing functional regressions.
+
+Further demonstrates the importance of integrating static analysis, security remediation and automated regression testing into the CI/CD pipeline.
+
+TODO: Invetsigate dependency vulmerability with Python Version
