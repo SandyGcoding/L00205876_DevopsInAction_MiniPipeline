@@ -47,6 +47,17 @@ node ('Sandy') {
             bat "\"${scannerHome}\\bin\\sonar-scanner.bat\""
 
         }
+
+    stage('Vulnerability Scanning - pip-audit') {
+
+        echo 'Installing Python vulnerability scanner'
+
+        bat '.venv313\\Scripts\\python.exe -m pip install pip-audit==2.10.1'
+
+        echo 'Scanning Python dependencies for known vulnerabilities'
+
+        bat '.venv313\\Scripts\\python.exe -m pip_audit --local'
+    }
     }
 
 
