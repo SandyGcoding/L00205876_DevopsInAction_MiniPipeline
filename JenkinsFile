@@ -34,4 +34,19 @@ node ('Sandy') {
                              allowEmptyArchive: true
         }
     }
+
+    stage('Static Analysis - SonarQube') {
+
+        def scannerHome = tool 'SonarScanner'
+
+        withSonarQubeEnv('SonarQube') {
+
+            bat "\"${scannerHome}\\bin\\sonar-scanner.bat\""
+
+        }
+    }
+
+
+
+
 }
