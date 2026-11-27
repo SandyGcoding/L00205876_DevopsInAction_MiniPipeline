@@ -1,13 +1,21 @@
 FROM python:3.13-slim AS builder
 
 WORKDIR /Build
-
 COPY Release/requirements.txt .
 
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
-
 FROM python:3.13-slim
+
+# Security remediation following the initial Trivy scan.
+# Trivy identified 54 HIGH severity findings in the Debian base image.
+# Refresh the package index and apply available security updates.
+# Remove cached package lists to minimise the final image size.
+# Vulnerabilities without available patches may remain.
+
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
