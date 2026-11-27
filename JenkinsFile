@@ -77,7 +77,8 @@ node ('Sandy') {
 
         echo "Building Docker image ${LocalImage}"
 
-        bat "docker build -f Release/DockerFile -t ${LocalImage} ."
+        // Check for an updated base image following the Trivy scan.
+        bat "docker build --pull -f Release/DockerFile -t ${LocalImage} ."
     }
 
     stage('Container Smoke Test') {
