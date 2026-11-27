@@ -1,5 +1,5 @@
 # Automated testing for Butters Veg
-
+import re
 import pytest
 from openpyxl import Workbook
 from concurrent.futures import ThreadPoolExecutor
@@ -129,6 +129,18 @@ def test_ConcurrentPurchases():
 
 # Flask Website Integration Tests
 
+def GetCSRFToken(Client):
+    Response = Client.get("/")
+    assert Response.status_code == 200
+
+    Token = re.search(
+        r'name="csrf_token" value="([^"]+)"',
+        Response.get_data(as_text=True)
+    )
+
+    assert Token is not None
+    return Token.group(1)
+
 def test_WebsiteHome():
     with app.test_client() as Client:
         Response = Client.get("/")
@@ -139,6 +151,7 @@ def test_WebsiteHome():
 def test_WebsiteBuyVeg():
     with app.test_client() as Client:
         Response = Client.post("/", data={
+            "csrf_token": GetCSRFToken(Client),
             "Action": "Buy",
             "Vegetable": "Potatoes",
             "Quantity": "5"
@@ -151,6 +164,7 @@ def test_WebsiteBuyVeg():
 def test_WebsiteInsufficientStock():
     with app.test_client() as Client:
         Response = Client.post("/", data={
+            "csrf_token": GetCSRFToken(Client),
             "Action": "Buy",
             "Vegetable": "Potatoes",
             "Quantity": "10"
@@ -163,6 +177,7 @@ def test_WebsiteInsufficientStock():
 def test_WebsiteSellVeg():
     with app.test_client() as Client:
         Response = Client.post("/", data={
+            "csrf_token": GetCSRFToken(Client),
             "Action": "Sell",
             "Vegetable": "Potatoes",
             "Quantity": "5"
@@ -174,6 +189,7 @@ def test_WebsiteSellVeg():
 def test_WebsiteAddNewVeg():
     with app.test_client() as Client:
         Response = Client.post("/", data={
+            "csrf_token": GetCSRFToken(Client),
             "Action": "Sell",
             "Vegetable": "__NEW__",
             "NewVeg": "Sweet Potato",
@@ -186,6 +202,7 @@ def test_WebsiteAddNewVeg():
 def test_WebsiteAddExistingVeg():
     with app.test_client() as Client:
         Response = Client.post("/", data={
+            "csrf_token": GetCSRFToken(Client),
             "Action": "Sell",
             "Vegetable": "__NEW__",
             "NewVeg": "potatoes",
@@ -199,6 +216,7 @@ def test_WebsiteAddExistingVeg():
 def test_WebsiteInvalidQuantity():
     with app.test_client() as Client:
         Response = Client.post("/", data={
+            "csrf_token": GetCSRFToken(Client),
             "Action": "Buy",
             "Vegetable": "Potatoes",
             "Quantity": "five"
@@ -211,6 +229,7 @@ def test_WebsiteInvalidQuantity():
 def test_WebsiteInvalidAction():
     with app.test_client() as Client:
         Response = Client.post("/", data={
+            "csrf_token": GetCSRFToken(Client),
             "Action": "Invalid",
             "Vegetable": "Potatoes",
             "Quantity": "5"
@@ -226,6 +245,7 @@ def test_WebsiteConcurrentPurchases():
     def Purchase():
         with app.test_client() as Client:
             Response = Client.post("/", data={
+                "csrf_token": GetCSRFToken(Client),
                 "Action": "Buy",
                 "Vegetable": "Potatoes",
                 "Quantity": "5"
@@ -241,3 +261,46 @@ def test_WebsiteConcurrentPurchases():
     assert sum(b"Thank you for ordering" in R for R in Results) == 1
     assert sum(b"Only 3 available" in R for R in Results) == 1
     assert LoadStock()["Potatoes"] == 3
+
+
+# CSRF Security Tests
+
+def test_CSRFMissingToken():
+    with app.test_client() as Client:
+        Response = Client.post("/", data={
+            "Action": "Buy",
+            "Vegetable": "Potatoes",
+            "Quantity": "5"
+        })
+
+        assert Response.status_code == 400
+        assert LoadStock()["Potatoes"] == 8
+
+
+def test_CSRFInvalidToken():
+    with app.test_client() as Client:
+        GetCSRFToken(Client)
+
+        Response = Client.post("/", data={
+            "csrf_token": "invalid-token",
+            "Action": "Buy",
+            "Vegetable": "Potatoes",
+            "Quantity": "5"
+        })
+
+        assert Response.status_code == 400
+        assert LoadStock()["Potatoes"] == 8
+
+
+def test_CSRFValidToken():
+    with app.test_client() as Client:
+        Response = Client.post("/", data={
+            "csrf_token": GetCSRFToken(Client),
+            "Action": "Buy",
+            "Vegetable": "Potatoes",
+            "Quantity": "5"
+        })
+
+        assert Response.status_code == 200
+        assert LoadStock()["Potatoes"] == 3
+
