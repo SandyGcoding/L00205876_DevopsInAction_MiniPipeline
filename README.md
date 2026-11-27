@@ -154,4 +154,7 @@ I modified my JenkinsFile to specify Python 3.13 both in the build and testing.
 I specified Python 3.13 in sonar-project.properties.
 There have been no changes made to the source code files.
 
-I added vulneralability scanning using pip audit to the JenkinsFile while which will look at dependencies with  Flask and Flask-WTF, Openpyxl and other runtime dependencies.
+I added vulneralability scanning using pip audit (version2.10.1) to the JenkinsFile while which will look at dependencies with  Flask and Flask-WTF, Openpyxl and other runtime dependencies.
+This is now integrated into the Jenkins pipeline to automatically can installed Python dependencies for known security vulnerabilities.
+The pipeline is configured to fail if vulnerabilities are detected, preventing affected builds from progressing to the Release phase.
+The initial automated scan completed successfully, with no known vulnerabilities identified at the time of scanning. This complements SonarQube's static code analysis by extending security checks to third-party dependencies.
