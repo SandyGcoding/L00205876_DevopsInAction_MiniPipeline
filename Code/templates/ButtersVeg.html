@@ -231,6 +231,8 @@
 
             <form method="POST" action="/" id="VegForm">
 
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
                 <label for="Action">Select an action</label>
 
                 <select id="Action" name="Action" required>
