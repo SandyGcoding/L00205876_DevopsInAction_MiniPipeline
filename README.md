@@ -69,3 +69,5 @@ BUILD:
 I added the tests from PyTest to requirements and updated my JenkinsFile.
 When I ran the build in Jenkins the Debugging test ran as per VSCode  the was 100%. As I had added Flash to the Python file for the HTML integration the test coverage had depleted as expected.
     
+Tests:
+In VSCode I added additional tests to the file test_Code_ButtersVegApp.py and ran the PyTests again. Coverage increased to 95%.

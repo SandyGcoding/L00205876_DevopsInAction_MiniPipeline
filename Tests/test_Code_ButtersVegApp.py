@@ -3,7 +3,8 @@
 import pytest
 from openpyxl import Workbook
 from concurrent.futures import ThreadPoolExecutor
-from Code.ButtersVegApp import LoadStock, BuyVeg, SellVeg
+from Code.ButtersVegApp import LoadStock, BuyVeg, SellVeg, app
+
 
 
 # Create a temporary Excel workbook for each test
@@ -124,3 +125,119 @@ def test_ConcurrentPurchases():
     assert LoadStock()["Potatoes"] == 3
     assert sum("Thank you for ordering" in r for r in Results) == 1
     assert sum("Only 3 available" in r for r in Results) == 1
+
+
+# Flask Website Integration Tests
+
+def test_WebsiteHome():
+    with app.test_client() as Client:
+        Response = Client.get("/")
+        assert Response.status_code == 200
+        assert b"Potatoes" in Response.data
+
+
+def test_WebsiteBuyVeg():
+    with app.test_client() as Client:
+        Response = Client.post("/", data={
+            "Action": "Buy",
+            "Vegetable": "Potatoes",
+            "Quantity": "5"
+        })
+        assert Response.status_code == 200
+        assert b"Thank you for ordering" in Response.data
+        assert LoadStock()["Potatoes"] == 3
+
+
+def test_WebsiteInsufficientStock():
+    with app.test_client() as Client:
+        Response = Client.post("/", data={
+            "Action": "Buy",
+            "Vegetable": "Potatoes",
+            "Quantity": "10"
+        })
+        assert Response.status_code == 200
+        assert b"Only 8 available" in Response.data
+        assert LoadStock()["Potatoes"] == 8
+
+
+def test_WebsiteSellVeg():
+    with app.test_client() as Client:
+        Response = Client.post("/", data={
+            "Action": "Sell",
+            "Vegetable": "Potatoes",
+            "Quantity": "5"
+        })
+        assert Response.status_code == 200
+        assert LoadStock()["Potatoes"] == 13
+
+
+def test_WebsiteAddNewVeg():
+    with app.test_client() as Client:
+        Response = Client.post("/", data={
+            "Action": "Sell",
+            "Vegetable": "__NEW__",
+            "NewVeg": "Sweet Potato",
+            "Quantity": "6"
+        })
+        assert Response.status_code == 200
+        assert LoadStock()["Sweet Potato"] == 6
+
+
+def test_WebsiteAddExistingVeg():
+    with app.test_client() as Client:
+        Response = Client.post("/", data={
+            "Action": "Sell",
+            "Vegetable": "__NEW__",
+            "NewVeg": "potatoes",
+            "Quantity": "5"
+        })
+        assert Response.status_code == 200
+        assert LoadStock()["Potatoes"] == 13
+        assert len(LoadStock()) == 4
+
+
+def test_WebsiteInvalidQuantity():
+    with app.test_client() as Client:
+        Response = Client.post("/", data={
+            "Action": "Buy",
+            "Vegetable": "Potatoes",
+            "Quantity": "five"
+        })
+        assert Response.status_code == 200
+        assert b"Please enter a valid positive whole number" in Response.data
+        assert LoadStock()["Potatoes"] == 8
+
+
+def test_WebsiteInvalidAction():
+    with app.test_client() as Client:
+        Response = Client.post("/", data={
+            "Action": "Invalid",
+            "Vegetable": "Potatoes",
+            "Quantity": "5"
+        })
+        assert Response.status_code == 200
+        assert b"Please select Buy or Sell" in Response.data
+        assert LoadStock()["Potatoes"] == 8
+
+
+def test_WebsiteConcurrentPurchases():
+    from concurrent.futures import ThreadPoolExecutor
+
+    def Purchase():
+        with app.test_client() as Client:
+            Response = Client.post("/", data={
+                "Action": "Buy",
+                "Vegetable": "Potatoes",
+                "Quantity": "5"
+            })
+            assert Response.status_code == 200
+            return Response.data
+
+    with ThreadPoolExecutor(max_workers=2) as Executor:
+        Results = list(Executor.map(
+            lambda _: Purchase(), range(2)
+        ))
+
+    assert sum(b"Thank you for ordering" in R for R in Results) == 1
+    assert sum(b"Only 3 available" in R for R in Results) == 1
+    assert LoadStock()["Potatoes"] == 3
