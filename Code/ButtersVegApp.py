@@ -2,10 +2,16 @@
 
 from openpyxl import load_workbook
 from threading import Lock
+import os
+from flask_wtf.csrf import CSRFProtect
+
 
 #Create web application, display HTML Template, receive customer information entered
 from flask import Flask, render_template, request
 app = Flask(__name__)
+#Enable CSRF Portection and retrieve secret key from env variable not source code
+app.config["SECRET_KEY"] = os.environ["BUTTERS_VEG_SECRET_KEY"]
+csrf = CSRFProtect(app)
 
 # Prevent simultaneous stock updates
 StockLock = Lock()
