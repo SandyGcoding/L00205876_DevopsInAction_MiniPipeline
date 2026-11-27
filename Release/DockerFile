@@ -1,4 +1,6 @@
 FROM python:3.13-slim-bookworm AS builder
+# Upgrade pip to the latest available version.
+RUN python -m pip install --no-cache-dir --upgrade pip
 
 WORKDIR /Build
 COPY Release/requirements.txt .
