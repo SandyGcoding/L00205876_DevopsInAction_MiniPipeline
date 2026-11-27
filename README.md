@@ -158,3 +158,14 @@ I added vulneralability scanning using pip audit (version2.10.1) to the JenkinsF
 This is now integrated into the Jenkins pipeline to automatically can installed Python dependencies for known security vulnerabilities.
 The pipeline is configured to fail if vulnerabilities are detected, preventing affected builds from progressing to the Release phase.
 The initial automated scan completed successfully, with no known vulnerabilities identified at the time of scanning. This complements SonarQube's static code analysis by extending security checks to third-party dependencies.
+
+
+Release – Docker
+
+I installed Docker Desktop on my local machine and created a Release branch and directory.
+I created a separate requirements file for the application runtime dependencies so that testing tools are not included in the Docker image.
+I created a DockerFile using a multi-stage build, a minimal Python 3.13 base image and a non-root user. I also added a .dockerignore file to exclude unnecessary files.
+I successfully built the Docker image and ran the container locally. I was able to access my Butters Veg website through my browser.
+Evidence of the successful Docker build and website running in the container is saved in the Evidence folder.
+
+The next step is to automate the Docker build, container testing, vulnerability scanning and release to Docker Hub through Jenkins.
