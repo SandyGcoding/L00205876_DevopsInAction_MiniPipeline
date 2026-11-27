@@ -4,7 +4,7 @@ node ('Sandy') {
         def revision = checkout scm
         echo "Checked out veg at Git commit ${revision.GIT_COMMIT}"
     }
-    #specify python 3.13 in build for SonarQube compatability
+    /*specify python 3.13 in build for SonarQube compatability*/
     stage('Build') {
 
         echo 'Verifying Python version'
@@ -26,7 +26,7 @@ node ('Sandy') {
 
         withCredentials([string(credentialsId: 'ButtersVegSecretKey', variable: 'BUTTERS_VEG_SECRET_KEY')]) {
 
-            try { #specify python 3.13 in testing for SonarQube compatability
+            try { /*specify python 3.13 in testing for SonarQube compatability*/
                bat '.venv313\\Scripts\\python.exe -m pytest Tests -v --junitxml=TestResults.xml --cov=Code.ButtersVegApp --cov-report=term-missing --cov-report=xml:coverage.xml --cov-report=html'
             }
             finally {
