@@ -6,6 +6,9 @@ WORKDIR /Build
 # Update the Python package installer.
 RUN python -m pip install --no-cache-dir --upgrade pip
 
+# Remediate the setuptools vulnerability CVE-2025-47273.
+RUN python -m pip install --no-cache-dir --upgrade "setuptools>=78.1.1"
+
 COPY Release/requirements.txt .
 
 # Install application runtime dependencies.
