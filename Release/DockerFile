@@ -1,29 +1,33 @@
-FROM python:3.13-slim-bookworm AS builder
-# Upgrade pip to the latest available version.
-RUN python -m pip install --no-cache-dir --upgrade pip
+# Build stage using Python 3.13 and Alpine Linux.
+FROM python:3.13-alpine AS builder
 
 WORKDIR /Build
+
+# Update the Python package installer.
+RUN python -m pip install --no-cache-dir --upgrade pip
+
 COPY Release/requirements.txt .
 
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+# Install application runtime dependencies.
+RUN python -m pip install --no-cache-dir \
+    --prefix=/install -r requirements.txt
 
-FROM python:3.13-slim-bookworm
 
-# Security remediation following the initial Trivy scan.
-# Trivy identified 54 HIGH severity findings in the Debian base image.
-# Refresh the package index and apply available security updates.
-# Remove cached package lists to minimise the final image size.
-# Vulnerabilities without available patches may remain.
+# Minimal runtime stage.
+FROM python:3.13-alpine
 
-RUN apt-get update \
-    && apt-get upgrade -y \
-    && rm -rf /var/lib/apt/lists/*
+# Apply available Alpine security updates.
+RUN apk upgrade --no-cache
+
+# Update pip in the runtime image.
+RUN python -m pip install --no-cache-dir --upgrade pip
 
 WORKDIR /app
 
 COPY --from=builder /install /usr/local
 
-RUN useradd --create-home appuser
+# Create a non-root application user.
+RUN adduser -D appuser
 
 COPY --chown=appuser:appuser Code/ButtersVegApp.py .
 COPY --chown=appuser:appuser Code/Veg.xlsx .
