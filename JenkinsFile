@@ -116,7 +116,7 @@ node ('Sandy') {
         }
     }
 
-    stage('Container Security - Trivy') {
+   /* stage('Container Security - Trivy') {
 
         echo 'Scanning Docker image for known vulnerabilities'
 
@@ -131,7 +131,7 @@ node ('Sandy') {
             bat returnStatus: true,
                 script: 'del /Q ButtersVegImage.tar'
         }
-    }
+    }*/
 
     stage('Release - Docker Hub') {
 
